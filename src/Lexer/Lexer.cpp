@@ -54,7 +54,7 @@ Lexer::Lexer(const string& filename) : currPos(0), currLine(1), currCol(1) {
 
 void Lexer::advance() {
     currPos++;
-    if (currPos > source.length()-1) {
+    if (currPos >= (int)source.length()) {
         currChar = '\0';
     }
     else {
@@ -68,7 +68,7 @@ void Lexer::advance() {
 }
 
 char Lexer::peek() {
-    if (currPos + 1 > source.length()-1) {
+    if (currPos + 1 >= (int)source.length()) {
         return '\0';
     }
     else {
@@ -93,7 +93,7 @@ string Lexer::toLowerCase(const string& str) {
 Token Lexer::identOrKeyword() {
     string result = "";
     int startCol = currCol;
-    while (currChar != '\0' && isalnum(currChar)) {
+    while (currChar != '\0' && isalnum(currChar) || currChar == '_') {
         result += currChar;
         advance();
     }
