@@ -300,3 +300,171 @@ Token Lexer::getNextToken() {
     }
     return {TokenType::END_OF_FILE, "EOF", currLine, currCol};
 }
+
+string Lexer::tokenTypeToString(TokenType type) {
+    if(type == TokenType::INTCON) {
+        return "intcon";
+    }
+    else if(type == TokenType::REALCON) {
+        return "realcon";
+    }
+    else if(type == TokenType::CHARCON) {
+        return "charcon";
+    }
+    else if(type == TokenType::STRING) {
+        return "string";
+    }
+    else if(type == TokenType::NOTSY) {
+        return "notsy";
+    }
+    else if(type == TokenType::PLUS) {
+        return "plus";
+    }
+    else if(type == TokenType::MINUS) {
+        return "minus";
+    }
+    else if(type == TokenType::TIMES) {
+        return "times";
+    }
+    else if(type == TokenType::IDIV) {
+        return "idiv";
+    }
+    else if(type == TokenType::RDIV) {
+        return "rdiv";
+    }
+    else if(type == TokenType::IMOD) {
+        return "imod";
+    }
+    else if(type == TokenType::ANDSY) {
+        return "andsy";
+    }
+    else if(type == TokenType::ORSY) {
+        return "orsy";
+    }
+    else if(type == TokenType::EQL) {
+        return "eql";
+    }
+    else if(type == TokenType::NEQ) {
+        return "neq";
+    }
+    else if(type == TokenType::GTR) {
+        return "gtr";
+    }
+    else if(type == TokenType::GEQ) {
+        return "geq";
+    }
+    else if(type == TokenType::LSS) {
+        return "lss";
+    }
+    else if(type == TokenType::LEQ) {
+        return "leq";
+    }
+    else if(type == TokenType::LPARENT) {
+        return "lparent";
+    }
+    else if(type == TokenType::RPARENT) {
+        return "rparent";
+    }
+    else if(type == TokenType::LBRACK) {
+        return "lbrack";
+    }
+    else if(type == TokenType::RBRACK) {
+        return "rbrack";
+    }
+    else if(type == TokenType::COMMA) {
+        return "comma";
+    }
+    else if(type == TokenType::SEMICOLON) {
+        return "semicolon";
+    }
+    else if(type == TokenType::PERIOD) {
+        return "period";
+    }
+    else if(type == TokenType::COLON) {
+        return "colon";
+    }
+    else if(type == TokenType::BECOMES) {
+        return "becomes";
+    }
+    else if(type == TokenType::CONSTSY) {
+        return "constsy";
+    }
+    else if(type == TokenType::TYPESY) {
+        return "typesy";
+    }
+    else if(type == TokenType::VARSY) {
+        return "varsy";
+    }
+    else if(type == TokenType::FUNCTIONSY) {
+        return "functionsy";
+    }
+    else if(type == TokenType::PROCEDURESY) {
+        return "proceduresy";
+    }
+    else if(type == TokenType::ARRAYSY) {
+        return "arraysy";
+    }
+    else if(type == TokenType::RECORDSY) {
+        return "recordsy";
+    }
+    else if(type == TokenType::PROGRAMSY) {
+        return "programsy";
+    }
+    else if(type == TokenType::IDENT) {
+        return "ident";
+    }
+    else if(type == TokenType::BEGINSY) {
+        return "beginsy";
+    }
+    else if(type == TokenType::IFSY) {
+        return "ifsy";
+    }
+    else if(type == TokenType::CASESY) {
+        return "casesy";
+    }
+    else if(type == TokenType::REPEATSY) {
+        return "repeatsy";
+    }
+    else if(type == TokenType::WHILESY) {
+        return "whilesy";
+    }
+    else if(type == TokenType::FORSY) {
+        return "forsy";
+    }
+    else if(type == TokenType::ENDSY) {
+        return "endsy";
+    }
+    else if(type == TokenType::ELSESY) {
+        return "elsesy";
+    }
+    else if(type == TokenType::UNTILSY) {
+        return "untilsy";
+    }
+    else if(type == TokenType::OFSY) {
+        return "ofsy";
+    }
+    else if(type == TokenType::DOSY) {
+        return "dosy";
+    }
+    else if(type == TokenType::TOSY) {
+        return "tosy";
+    }
+    else if(type == TokenType::DOWNTOSY) {
+        return "downtosy";
+    }
+    else if(type == TokenType::THENSY) {
+        return "thensy";
+    }
+    else if(type == TokenType::COMMENT) {
+        return "comment";
+    }
+    else if(type == TokenType::END_OF_FILE) {
+        return "end_of_file";
+    }
+    else if(type == TokenType::UNKNOWN) {
+        return "unknown";
+    }
+    else {
+        return "error";
+    }
+}
