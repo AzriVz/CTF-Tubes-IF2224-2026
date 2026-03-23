@@ -93,7 +93,7 @@ string Lexer::toLowerCase(const string& str) {
 Token Lexer::identOrKeyword() {
     string result = "";
     int startCol = currCol;
-    while (currChar != '\0' && isalnum(currChar) || currChar == '_') {
+    while (currChar != '\0' && isalnum(currChar)) {
         result += currChar;
         advance();
     }
@@ -133,7 +133,7 @@ Token Lexer::stringOrChar() {
     int startCol = currCol;
 
     advance();
-    while (currChar != '\0') {
+    while (currChar != '\0' && currChar != '\n') {
         if(currChar == '\'') {
             if(peek() == '\'') {
                 result += '\'';
@@ -167,7 +167,7 @@ Token Lexer::commentCurly() {
     int startCol = currCol;
     
     advance();
-    while(currChar != '\0' && currChar != '}') {
+    while(currChar != '\0' && currChar != '}' && currChar != '\n') {
         result += currChar;
         advance();
     }
