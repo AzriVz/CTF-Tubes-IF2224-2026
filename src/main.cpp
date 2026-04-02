@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
             else if (token.type == TokenType::UNKNOWN) {
                 cout << "Karakter tidak dikenal '" << token.value << "' pada Baris " << token.line << ", Kolom " << token.column << endl; 
             }
-            else if(token.type != TokenType::COMMENT) {
+            else {
                 cout << typeName << endl;
             }            
             token = lexer.getNextToken(); 
