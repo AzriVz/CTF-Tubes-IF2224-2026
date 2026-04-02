@@ -1,0 +1,29 @@
+typesy
+ident (Node)
+eql
+recordsy
+ident (name)
+colon
+ident (char)
+semicolon
+ident (data)
+colon
+arraysy
+lbrack
+intcon (0)
+period
+period
+intcon (3)
+rbrack
+ofsy
+ident (integer)
+semicolon
+endsy
+semicolon
+varsy
+ident (head)
+comma
+ident (tail)
+colon
+ident (Node)
+semicolon

@@ -1,0 +1,61 @@
+beginsy
+ifsy
+ident (a)
+eql
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (1)
+elsesy
+ident (x)
+becomes
+intcon (2)
+semicolon
+ifsy
+ident (a)
+gtr
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (3)
+semicolon
+ifsy
+ident (a)
+lss
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (4)
+semicolon
+ifsy
+ident (a)
+geq
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (5)
+semicolon
+ifsy
+ident (a)
+leq
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (6)
+semicolon
+ifsy
+ident (a)
+neq
+ident (b)
+thensy
+ident (x)
+becomes
+intcon (7)
+semicolon
+endsy
+period

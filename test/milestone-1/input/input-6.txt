@@ -1,0 +1,2 @@
+program comment;
+{ this comment has := + - <> and words } begin (* block comment with array [1..10] and record *) end.

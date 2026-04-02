@@ -1,0 +1,8 @@
+programsy
+ident (comment)
+semicolon
+comment
+beginsy
+comment
+endsy
+period

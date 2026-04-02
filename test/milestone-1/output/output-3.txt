@@ -1,0 +1,58 @@
+functionsy
+ident (Eval)
+lparent
+ident (a)
+colon
+ident (integer)
+rparent
+semicolon
+beginsy
+casesy
+ident (a)
+ofsy
+intcon (1)
+colon
+ident (a)
+becomes
+ident (a)
+plus
+intcon (1)
+semicolon
+intcon (2)
+colon
+ident (a)
+becomes
+ident (a)
+minus
+intcon (1)
+semicolon
+elsesy
+ident (a)
+becomes
+ident (a)
+times
+intcon (2)
+semicolon
+endsy
+semicolon
+endsy
+semicolon
+proceduresy
+ident (Process)
+lparent
+ident (x)
+comma
+ident (y)
+colon
+ident (integer)
+rparent
+semicolon
+beginsy
+ident (x)
+becomes
+ident (x)
+plus
+ident (y)
+semicolon
+endsy
+semicolon

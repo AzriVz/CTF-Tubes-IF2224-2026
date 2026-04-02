@@ -1,0 +1,18 @@
+notsy
+ident (ready)
+andsy
+ident (enabled)
+orsy
+ident (done)
+imod
+intcon (2)
+idiv
+intcon (3)
+plus
+intcon (4)
+minus
+intcon (5)
+times
+intcon (6)
+rdiv
+intcon (7)

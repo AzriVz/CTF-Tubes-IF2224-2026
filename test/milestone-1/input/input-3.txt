@@ -1,0 +1,14 @@
+function Eval(a: integer);
+begin
+	case a of
+		1: a := a + 1;
+		2: a := a - 1;
+	else
+		a := a * 2;
+	end;
+end;
+
+procedure Process(x, y: integer);
+begin
+	x := x + y;
+end;

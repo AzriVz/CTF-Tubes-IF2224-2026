@@ -1,0 +1,6 @@
+program Demo1;
+    var x, y: integer;
+begin
+    x := 42;
+    y := x + 5;
+end.

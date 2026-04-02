@@ -1,0 +1,5 @@
+type Node == record
+	name: char;
+	data: array [0..3] of integer;
+end;
+var head, tail: Node;

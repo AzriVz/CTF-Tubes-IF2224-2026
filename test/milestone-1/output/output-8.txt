@@ -1,0 +1,5 @@
+charcon ('a')
+string ('hello world')
+string ('it's fine')
+string ('')
+string ('x'y')

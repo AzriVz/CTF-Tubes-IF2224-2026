@@ -1,0 +1,25 @@
+constsy
+ident (pi)
+eql
+realcon (3.14)
+semicolon
+typesy
+ident (Vector)
+eql
+arraysy
+lbrack
+intcon (1)
+period
+period
+intcon (10)
+rbrack
+ofsy
+ident (integer)
+semicolon
+varsy
+ident (a)
+comma
+ident (b)
+colon
+ident (integer)
+semicolon

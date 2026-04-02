@@ -1,0 +1,8 @@
+begin
+	if a == b then x := 1 else x := 2;
+	if a > b then x := 3;
+	if a < b then x := 4;
+	if a >= b then x := 5;
+	if a <= b then x := 6;
+	if a <> b then x := 7;
+end.

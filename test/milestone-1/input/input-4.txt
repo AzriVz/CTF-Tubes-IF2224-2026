@@ -1,0 +1,11 @@
+while count <> 10 do
+begin
+	count := count + 1;
+end;
+
+for i := 1 to 5 do i := i + 1;
+for j := 10 downto 1 do j := j - 1;
+
+repeat
+	x := x / 2;
+until x <= 1;

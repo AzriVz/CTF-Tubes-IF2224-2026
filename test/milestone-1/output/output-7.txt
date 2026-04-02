@@ -1,0 +1,8 @@
+ident (x)
+becomes
+ident (y)
+Karakter tidak dikenal '@' pada Baris 1, Kolom 8
+ident (z)
+Karakter tidak dikenal '#' pada Baris 1, Kolom 12
+ident (w)
+semicolon
