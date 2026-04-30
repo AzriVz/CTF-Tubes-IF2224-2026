@@ -82,6 +82,7 @@ class Lexer {
         char peek();
         void skipWhiteSpace();
         std::string toLowerCase(const std::string& str);
+        Token unknownSequence();
 
         Token number();
         Token identOrKeyword();

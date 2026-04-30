@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
                 cout << typeName << " ('" << token.value << "')" << endl;
             }
             else if (token.type == TokenType::UNKNOWN) {
-                cout << "Karakter tidak dikenal '" << token.value << "' pada Baris " << token.line << ", Kolom " << token.column << endl; 
+                cout << typeName << " (" << token.value << ")" << endl;
             }
             else {
                 cout << typeName << endl;

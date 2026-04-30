@@ -6,6 +6,10 @@
 #include <stdexcept>
 using namespace std;
 
+static bool isSeparator(char c) {
+    return c == '\0' || isspace(static_cast<unsigned char>(c));
+}
+
 Lexer::Lexer(const string& filename) : currPos(0), currLine(1), currCol(1) {
     ifstream file(filename);
     if (!file.is_open()) {
@@ -53,17 +57,20 @@ Lexer::Lexer(const string& filename) : currPos(0), currLine(1), currCol(1) {
 }
 
 void Lexer::advance() {
+    if (currChar == '\n') {
+        currLine++;
+        currCol = 1;
+    }
+    else {
+        currCol++;
+    }
+
     currPos++;
     if (currPos >= (int)source.length()) {
         currChar = '\0';
     }
     else {
         currChar = source[currPos];
-        currCol++;
-        if (currChar == '\n') {
-            currLine++;
-            currCol = 0;
-        }
     }
 }
 
@@ -77,7 +84,7 @@ char Lexer::peek() {
 }
 
 void Lexer::skipWhiteSpace() {
-    while (currChar != '\0' && isspace(currChar)) {
+    while (currChar != '\0' && isspace(static_cast<unsigned char>(currChar))) {
         advance();
     }
 }
@@ -85,15 +92,29 @@ void Lexer::skipWhiteSpace() {
 string Lexer::toLowerCase(const string& str) {
     string lowerStr = str;
     for (char& c : lowerStr) {
-        c = tolower(c);
+        c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
     }
     return lowerStr;
 }
 
+Token Lexer::unknownSequence() {
+    string result = "";
+    int startLine = currLine;
+    int startCol = currCol;
+
+    while (currChar != '\0' && !isSeparator(currChar)) {
+        result += currChar;
+        advance();
+    }
+
+    return {TokenType::UNKNOWN, result, startLine, startCol};
+}
+
 Token Lexer::identOrKeyword() {
     string result = "";
+    int startLine = currLine;
     int startCol = currCol;
-    while (currChar != '\0' && isalnum(currChar)) {
+    while (currChar != '\0' && isalnum(static_cast<unsigned char>(currChar))) {
         result += currChar;
         advance();
     }
@@ -103,33 +124,35 @@ Token Lexer::identOrKeyword() {
     if (keywords.find(lowerResult) != keywords.end()) {
         type = keywords[lowerResult];
     }
-    return {type, result, currLine, startCol};
+    return {type, result, startLine, startCol};
 }
 
 Token Lexer::number() {
     string result = "";
+    int startLine = currLine;
     int startCol = currCol;
-    while (currChar != '\0' && isdigit(currChar)) {
+    while (currChar != '\0' && isdigit(static_cast<unsigned char>(currChar))) {
         result += currChar;
         advance();
     }
 
     if (currChar == '.') {
-        if (isdigit(peek())) {
+        if (isdigit(static_cast<unsigned char>(peek()))) {
             result += currChar;
             advance();
-            while(currChar != '\0' && isdigit(currChar)) {
+            while(currChar != '\0' && isdigit(static_cast<unsigned char>(currChar))) {
                 result += currChar;
                 advance();
             }
-            return {TokenType::REALCON,result, currLine, startCol};
+            return {TokenType::REALCON, result, startLine, startCol};
         }
     }
-    return {TokenType::INTCON, result, currLine, startCol};
+    return {TokenType::INTCON, result, startLine, startCol};
 }
 
 Token Lexer::stringOrChar() {
     string result = "";
+    int startLine = currLine;
     int startCol = currCol;
 
     advance();
@@ -159,11 +182,12 @@ Token Lexer::stringOrChar() {
         type = TokenType::STRING;
     }
 
-    return {type, result, currLine, startCol};
+    return {type, result, startLine, startCol};
 }
 
 Token Lexer::commentCurly() {
     string result = "{";
+    int startLine = currLine;
     int startCol = currCol;
     
     advance();
@@ -176,11 +200,12 @@ Token Lexer::commentCurly() {
         result += '}';
         advance();
     }
-    return {TokenType::COMMENT, result, currLine, startCol};
+    return {TokenType::COMMENT, result, startLine, startCol};
 }
 
 Token Lexer::commentParentheses() {
     string result = "(*";
+    int startLine = currLine;
     int startCol = currCol;
     advance();
     advance();
@@ -194,57 +219,58 @@ Token Lexer::commentParentheses() {
         result += currChar;
         advance();
     }
-    return{TokenType::COMMENT, result, currLine, startCol};
+    return{TokenType::COMMENT, result, startLine, startCol};
 }
 
 Token Lexer::getNextToken() {
     while(currChar != '\0') {
-        if(isspace(currChar)) {
+        if(isspace(static_cast<unsigned char>(currChar))) {
             skipWhiteSpace();
             continue;
         }
+        int startLine = currLine;
         int startCol = currCol;
-        if(isalpha(currChar)) {
+        if(isalpha(static_cast<unsigned char>(currChar))) {
             return identOrKeyword();
         }
-        if(isdigit(currChar)) {
+        if(isdigit(static_cast<unsigned char>(currChar))) {
             return number();
         }
         if(currChar == '<') {
             advance();
             if(currChar == '=') {
                 advance();
-                return {TokenType::LEQ, "<=", currLine, startCol};
+                return {TokenType::LEQ, "<=", startLine, startCol};
             }
             if(currChar == '>') {
                 advance();
-                return {TokenType::NEQ, "<>", currLine, startCol};
+                return {TokenType::NEQ, "<>", startLine, startCol};
             }
-            return {TokenType::LSS, "<", currLine, startCol}; 
+            return {TokenType::LSS, "<", startLine, startCol}; 
         }
         if(currChar == '>') {
             advance();
             if(currChar == '=') {
                 advance();
-                return {TokenType::GEQ, ">=", currLine, startCol};
+                return {TokenType::GEQ, ">=", startLine, startCol};
             }
-            return {TokenType::GTR, ">", currLine, startCol};
+            return {TokenType::GTR, ">", startLine, startCol};
         }
         if(currChar == ':') {
             advance();
             if(currChar == '=') {
                 advance();
-                return {TokenType::BECOMES, ":=", currLine, startCol};
+                return {TokenType::BECOMES, ":=", startLine, startCol};
             }
-            return {TokenType::COLON, ":", currLine, startCol};
+            return {TokenType::COLON, ":", startLine, startCol};
         }
         if(currChar == '=') {
             advance();
             if(currChar == '=') {
                 advance();
-                return {TokenType::EQL, "==", currLine, startCol};
+                return {TokenType::EQL, "==", startLine, startCol};
             }
-            return {TokenType::UNKNOWN, "=", currLine, startCol};
+            return {TokenType::UNKNOWN, "=", startLine, startCol};
         }
         if(currChar == '\'') {
             return stringOrChar();
@@ -257,45 +283,49 @@ Token Lexer::getNextToken() {
                 return commentParentheses();
             }
             advance();
-            return {TokenType::LPARENT, "(", currLine, startCol};
+            return {TokenType::LPARENT, "(", startLine, startCol};
 
+        }
+
+        if(currChar == '.') {
+            if(isdigit(static_cast<unsigned char>(peek()))) {
+                return unknownSequence();
+            }
+            advance();
+            return {TokenType::PERIOD, ".", startLine, startCol};
         }
 
         char c = currChar;
         advance();
         if(c == '+') {
-            return {TokenType::PLUS, "+", currLine, startCol};
+            return {TokenType::PLUS, "+", startLine, startCol};
         }
         else if(c == '-') {
-            return {TokenType::MINUS, "-", currLine, startCol};
+            return {TokenType::MINUS, "-", startLine, startCol};
         }
         else if(c == '*') {
-            return {TokenType::TIMES, "*", currLine, startCol};
+            return {TokenType::TIMES, "*", startLine, startCol};
         }
         else if(c == '/') {
-            return {TokenType::RDIV, "/", currLine, startCol};
+            return {TokenType::RDIV, "/", startLine, startCol};
         }
         else if(c == ')') {
-            return {TokenType::RPARENT, ")", currLine, startCol};
+            return {TokenType::RPARENT, ")", startLine, startCol};
         }
         else if(c == '[') {
-            return {TokenType::LBRACK, "[", currLine, startCol};
+            return {TokenType::LBRACK, "[", startLine, startCol};
         }
         else if(c == ']') {
-            return {TokenType::RBRACK, "]", currLine, startCol};
+            return {TokenType::RBRACK, "]", startLine, startCol};
         }
         else if(c == ',') {
-            return {TokenType::COMMA, ",", currLine, startCol};
-        }
-        else if(c == '.') {
-            return {TokenType::PERIOD, ".", currLine, startCol};
+            return {TokenType::COMMA, ",", startLine, startCol};
         }
         else if(c == ';') {
-            return {TokenType::SEMICOLON, ";", currLine, startCol};
+            return {TokenType::SEMICOLON, ";", startLine, startCol};
         }
         else {
-            string unknown(1, c);
-            return {TokenType::UNKNOWN, unknown, currLine, startCol};
+            return unknownSequence();
         }
     }
     return {TokenType::END_OF_FILE, "EOF", currLine, currCol};
