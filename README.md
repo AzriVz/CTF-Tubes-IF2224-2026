@@ -38,6 +38,27 @@ Tahap pertama berfokus pada pengembangan **Lexical Analyzer** yang berfungsi unt
 ```bash
 make
 ```
+
+#### Lexer mode
+
+```bash
+make lexer
+```
+
+```bash
+make lexer test/milestone-1/input/input-1.txt
+```
+
+#### Parser mode
+
+```bash
+make parse
+```
+
+```bash
+make parse test/milestone-1/input/input-1.txt
+```
+
 ```bash
 ./bin/arion-compiler /test/milestone-X/<input-file.txt>
 ```
