@@ -561,7 +561,37 @@ ParseNode* Parser::statementList() {
 
 ParseNode* Parser::statement() {
     if(curr.type == TokenType::IDENT) {
-        return assignmentStatement();
+        ParseNode* first = variable();
+
+        if(curr.type == TokenType::BECOMES) {
+            ParseNode* node = new ParseNode("<assignment-statement>");
+            node->add(first);
+            node->add(new ParseNode("becomes"));
+            advance();
+            node->add(expression());
+            return node;
+        }
+
+        if(first->name != "ident") {
+            throw runtime_error("Syntax error: expected ':=' in assignment");
+        }
+
+        ParseNode* call = new ParseNode("<procedure/function-call>");
+        call->add(first);
+        if(curr.type == TokenType::LPARENT) {
+            call->add(new ParseNode("lparent"));
+            advance();
+            if(curr.type != TokenType::RPARENT) {
+                call->add(parameterList());
+            }
+            if(curr.type == TokenType::RPARENT) {
+                call->add(new ParseNode("rparent"));
+                advance();
+            } else {
+                throw runtime_error("Syntax error: expected ')' after procedure/function call");
+            }
+        }
+        return call;
     }
 
     ParseNode* node = new ParseNode("<statement>");

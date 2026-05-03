@@ -23,11 +23,15 @@ struct ParseNode {
 
     void print(std::ostream& out, const std::string& prefix = "", bool isLast = true) {
         out << prefix;
-        out << (isLast ? "└── " : "├── ") << name;
+        if (prefix.empty()) {
+            out << name;
+        } else {
+            out << (isLast ? "└── " : "├── ") << name;
+        }
         if(!token.empty()) out << "(" << token << ")";
         out << std::endl;
-        for (int i = 0; i < children.size(); i++) {
-            children[i]->print(out, prefix + (isLast ? "    " : "│   "), i+1==children.size());
+        for (std::size_t i = 0; i < children.size(); i++) {
+            children[i]->print(out, prefix + (isLast ? "    " : "│   "), i + 1 == children.size());
         }
     }
 };
