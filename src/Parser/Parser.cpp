@@ -606,11 +606,17 @@ ParseNode* Parser::variable() {
         ParseNode* id = new ParseNode("ident");
         id->token = curr.value;
         advance();
-        // check for component (array index or record field)
+        
+        // check for components (array index or record field)
+        // ident + (component-variable)*
         if(curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
-            ParseNode* var = new ParseNode("<variable>");
+            ParseNode* var= new ParseNode("<variable>");
             var->add(id);
-            var->add(componentVariable());
+
+            while(curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
+                var->add(componentVariable());
+            }
+
             return var;
         }
         return id;
@@ -620,23 +626,30 @@ ParseNode* Parser::variable() {
 
 ParseNode* Parser::componentVariable() {
     ParseNode* node = new ParseNode("<component-variable>");
-    while (curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
-        if (curr.type == TokenType::LBRACK) {
-            node->add(new ParseNode("lbrack"));
+    
+    if (curr.type == TokenType::LBRACK) {
+        // array index: [index-list]
+        node->add(new ParseNode("lbrack"));
+        advance();
+        node->add(indexList());
+
+        if(curr.type == TokenType::RBRACK) {
+            node->add(new ParseNode("rbrack"));
             advance();
-            node->add(indexList());
-            if(curr.type == TokenType::RBRACK) {
-                node->add(new ParseNode("rbrack")); advance();
-            }
-        } else if(curr.type == TokenType::PERIOD) {
-            node->add(new ParseNode("period"));
+        } else {
+            throw runtime_error("Syntax error: expected ']' after index list");
+        }
+    } else if (curr.type == TokenType::PERIOD) {
+        // .ident
+        node->add(new ParseNode("period"));
+        advance();
+        if(curr.type == TokenType::IDENT) {
+            ParseNode* id = new ParseNode("ident");
+            id->token = curr.value;
+            node->add(id);
             advance();
-            if(curr.type == TokenType::IDENT) {
-                ParseNode* id = new ParseNode("ident");
-                id->token = curr.value;
-                node->add(id);
-                advance();
-            }
+        } else {
+            throw runtime_error("Syntax error: expected identifier after '.'");
         }
     }
     return node;
