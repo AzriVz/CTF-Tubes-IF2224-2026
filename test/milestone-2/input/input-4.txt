@@ -1,0 +1,10 @@
+program ControlFlow;
+var
+    i: integer;
+begin
+    i := 0;
+    while i < 10 do
+        if i mod 2 == 0 then
+            writeln(i);
+        i := i + 1;
+end.

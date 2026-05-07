@@ -1,0 +1,193 @@
+<program>
+    ├── <program-header>
+    │   ├── programsy
+    │   ├── ident(Complex)
+    │   └── semicolon
+    ├── <declaration-part>
+    │   ├── <type-declaration>
+    │   │   ├── typesy
+    │   │   ├── ident(Point)
+    │   │   ├── eql
+    │   │   ├── <type>
+    │   │   │   └── <record-type>
+    │   │   │       ├── recordsy
+    │   │   │       ├── <field-list>
+    │   │   │       │   ├── <field-part>
+    │   │   │       │   │   ├── <identifier-list>
+    │   │   │       │   │   │   └── ident(x)
+    │   │   │       │   │   ├── colon
+    │   │   │       │   │   └── <type>
+    │   │   │       │   │       └── ident(integer)
+    │   │   │       │   ├── semicolon
+    │   │   │       │   └── <field-part>
+    │   │   │       │       ├── <identifier-list>
+    │   │   │       │       │   └── ident(y)
+    │   │   │       │       ├── colon
+    │   │   │       │       └── <type>
+    │   │   │       │           └── ident(integer)
+    │   │   │       └── endsy
+    │   │   └── semicolon
+    │   ├── <var-declaration>
+    │   │   ├── varsy
+    │   │   ├── <identifier-list>
+    │   │   │   └── ident(arr)
+    │   │   ├── colon
+    │   │   ├── <type>
+    │   │   │   └── <array-type>
+    │   │   │       ├── arraysy
+    │   │   │       ├── lbrack
+    │   │   │       ├── <range>
+    │   │   │       │   ├── <constant>
+    │   │   │       │   │   └── intcon(1)
+    │   │   │       │   ├── period
+    │   │   │       │   ├── period
+    │   │   │       │   └── <constant>
+    │   │   │       │       └── intcon(10)
+    │   │   │       ├── rbrack
+    │   │   │       ├── ofsy
+    │   │   │       └── <type>
+    │   │   │           └── ident(integer)
+    │   │   ├── semicolon
+    │   │   ├── <identifier-list>
+    │   │   │   └── ident(p)
+    │   │   ├── colon
+    │   │   ├── <type>
+    │   │   │   └── ident(Point)
+    │   │   └── semicolon
+    │   ├── <subprogram-declaration>
+    │   │   └── <procedure-declaration>
+    │   │       ├── proceduresy
+    │   │       ├── ident(setVal)
+    │   │       ├── <formal-parameter-list>
+    │   │       │   ├── lparent
+    │   │       │   ├── <parameter-group>
+    │   │       │   │   ├── <identifier-list>
+    │   │       │   │   │   └── ident(i)
+    │   │       │   │   ├── colon
+    │   │       │   │   └── <type>
+    │   │       │   │       └── ident(integer)
+    │   │       │   ├── semicolon
+    │   │       │   ├── <parameter-group>
+    │   │       │   │   ├── <identifier-list>
+    │   │       │   │   │   └── ident(v)
+    │   │       │   │   ├── colon
+    │   │       │   │   └── <type>
+    │   │       │   │       └── ident(integer)
+    │   │       │   └── rparent
+    │   │       ├── semicolon
+    │   │       ├── <block>
+    │   │       │   ├── <declaration-part>
+    │   │       │   └── <compound-statement>
+    │   │       │       ├── beginsy
+    │   │       │       ├── <statement-list>
+    │   │       │       │   └── <assignment-statement>
+    │   │       │       │       ├── <variable>
+    │   │       │       │       │   ├── ident(arr)
+    │   │       │       │       │   └── <component-variable>
+    │   │       │       │       │       ├── lbrack
+    │   │       │       │       │       ├── <index-list>
+    │   │       │       │       │       │   └── <factor>
+    │   │       │       │       │       │       └── ident(i)
+    │   │       │       │       │       └── rbrack
+    │   │       │       │       ├── becomes
+    │   │       │       │       └── <expression>
+    │   │       │       │           └── <simple-expression>
+    │   │       │       │               └── <term>
+    │   │       │       │                   └── <factor>
+    │   │       │       │                       └── ident(v)
+    │   │       │       └── endsy
+    │   │       └── semicolon
+    │   └── <subprogram-declaration>
+    │       └── <function-declaration>
+    │           ├── functionsy
+    │           ├── ident(getX)
+    │           ├── <formal-parameter-list>
+    │           │   ├── lparent
+    │           │   ├── <parameter-group>
+    │           │   │   ├── <identifier-list>
+    │           │   │   │   └── ident(pt)
+    │           │   │   ├── colon
+    │           │   │   └── <type>
+    │           │   │       └── ident(Point)
+    │           │   └── rparent
+    │           ├── colon
+    │           ├── ident(integer)
+    │           ├── semicolon
+    │           ├── <block>
+    │           │   ├── <declaration-part>
+    │           │   └── <compound-statement>
+    │           │       ├── beginsy
+    │           │       ├── <statement-list>
+    │           │       │   └── <assignment-statement>
+    │           │       │       ├── ident(getX)
+    │           │       │       ├── becomes
+    │           │       │       └── <expression>
+    │           │       │           └── <simple-expression>
+    │           │       │               └── <term>
+    │           │       │                   └── <factor>
+    │           │       │                       └── <variable>
+    │           │       │                           ├── ident(pt)
+    │           │       │                           └── <component-variable>
+    │           │       │                               ├── period
+    │           │       │                               └── ident(x)
+    │           │       └── endsy
+    │           └── semicolon
+    ├── <compound-statement>
+    │   ├── beginsy
+    │   ├── <statement-list>
+    │   │   ├── <procedure/function-call>
+    │   │   │   ├── ident(setVal)
+    │   │   │   ├── lparent
+    │   │   │   ├── <parameter-list>
+    │   │   │   │   ├── <expression>
+    │   │   │   │   │   └── <simple-expression>
+    │   │   │   │   │       └── <term>
+    │   │   │   │   │           └── <factor>
+    │   │   │   │   │               └── intcon(1)
+    │   │   │   │   ├── comma
+    │   │   │   │   └── <expression>
+    │   │   │   │       └── <simple-expression>
+    │   │   │   │           └── <term>
+    │   │   │   │               └── <factor>
+    │   │   │   │                   └── intcon(42)
+    │   │   │   └── rparent
+    │   │   ├── semicolon
+    │   │   ├── <assignment-statement>
+    │   │   │   ├── <variable>
+    │   │   │   │   ├── ident(p)
+    │   │   │   │   └── <component-variable>
+    │   │   │   │       ├── period
+    │   │   │   │       └── ident(x)
+    │   │   │   ├── becomes
+    │   │   │   └── <expression>
+    │   │   │       └── <simple-expression>
+    │   │   │           └── <term>
+    │   │   │               └── <factor>
+    │   │   │                   └── intcon(5)
+    │   │   ├── semicolon
+    │   │   └── <assignment-statement>
+    │   │       ├── <variable>
+    │   │       │   ├── ident(arr)
+    │   │       │   └── <component-variable>
+    │   │       │       ├── lbrack
+    │   │       │       ├── <index-list>
+    │   │       │       │   └── <factor>
+    │   │       │       │       └── intcon(2)
+    │   │       │       └── rbrack
+    │   │       ├── becomes
+    │   │       └── <expression>
+    │   │           └── <simple-expression>
+    │   │               └── <term>
+    │   │                   └── <factor>
+    │   │                       └── <procedure/function-call>
+    │   │                           ├── ident(getX)
+    │   │                           ├── lparent
+    │   │                           ├── <parameter-list>
+    │   │                           │   └── <expression>
+    │   │                           │       └── <simple-expression>
+    │   │                           │           └── <term>
+    │   │                           │               └── <factor>
+    │   │                           │                   └── ident(p)
+    │   │                           └── rparent
+    │   └── endsy
+    └── period

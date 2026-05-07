@@ -1,0 +1,17 @@
+program Locals;
+var
+  global: integer;
+
+procedure compute(n: integer);
+const
+  FACTOR == 2;
+var
+  temp: integer;
+begin
+  temp := n * FACTOR;
+  global := temp
+end;
+
+begin
+  compute(5)
+end.

@@ -1,0 +1,10 @@
+program TypeTest;
+type
+  Range == 1..10;
+  Month == (Jan, Feb, Mar, Apr);
+var
+  x: Range;
+  m: Month;
+begin
+  x := 1;
+end.

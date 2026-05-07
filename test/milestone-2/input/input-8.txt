@@ -1,0 +1,15 @@
+program Chain;
+type
+  Inner == record
+    val: integer
+  end;
+  Outer == record
+    inner: Inner
+  end;
+var
+  o: Outer;
+  mat: array[1..3] of integer;
+begin
+  o.inner.val := 7;
+  mat[1] := o.inner.val
+end.

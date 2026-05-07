@@ -1,0 +1,25 @@
+program Complex;
+type
+  Point == record
+    x: integer;
+    y: integer
+  end;
+var
+  arr: array[1..10] of integer;
+  p: Point;
+
+procedure setVal(i: integer; v: integer);
+begin
+  arr[i] := v
+end;
+
+function getX(pt: Point): integer;
+begin
+  getX := pt.x
+end;
+
+begin
+  setVal(1, 42);
+  p.x := 5;
+  arr[2] := getX(p)
+end.

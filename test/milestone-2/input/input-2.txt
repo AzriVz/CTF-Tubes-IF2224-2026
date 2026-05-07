@@ -1,0 +1,9 @@
+program ConstTest;
+const
+  A == 100;
+  B == +10.5;
+  C == -20;
+  D == 'x';
+  E == 'hello';
+begin
+end.

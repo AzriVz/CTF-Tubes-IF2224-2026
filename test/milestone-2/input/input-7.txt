@@ -1,0 +1,22 @@
+program SubProgramTest;
+const
+    A==100;
+    B=='yaya';
+    C==+10.0;
+var
+    res: integer;
+    a: array[1..100] of integer;
+function add(a,b:integer): integer;
+    begin
+        add := a + b;
+    end;
+procedure tes(a:integer);
+    begin
+        writeln(a);
+    end;
+begin
+    a[5]:=10;
+    tes(a[5]);
+    res:=add(1,A);
+
+end.
