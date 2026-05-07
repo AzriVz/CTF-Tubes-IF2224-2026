@@ -289,6 +289,10 @@ Token Lexer::getNextToken() {
 
         if(currChar == '.') {
             if(isdigit(static_cast<unsigned char>(peek()))) {
+                if(currPos > 0 && source[currPos - 1] == '.') {
+                    advance();
+                    return {TokenType::PERIOD, ".", startLine, startCol};
+                }
                 return unknownSequence();
             }
             advance();
