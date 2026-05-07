@@ -168,7 +168,8 @@ ParseNode* Parser::constant() {
         node->add(n); advance();
         return node;
     }
-    return node;
+    
+    throw runtime_error("Syntax error: expected constant");
 }
 
 ParseNode* Parser::typeDeclaration() {
@@ -254,21 +255,31 @@ ParseNode* Parser::arrayType() {
     if(curr.type == TokenType::ARRAYSY) {
         node->add(new ParseNode("arraysy"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected 'array'");
     }
     if(curr.type == TokenType::LBRACK) {
         node->add(new ParseNode("lbrack"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected '[' in array declaration");
     }
-    if(curr.type == TokenType::INTCON || curr.type==TokenType::CHARCON || curr.type==TokenType::IDENT) {
+    if(curr.type == TokenType::INTCON || curr.type==TokenType::CHARCON || curr.type==TokenType::IDENT || curr.type == TokenType::PLUS || curr.type == TokenType::MINUS) {
         node->add(rangeType());
+    } else {
+        throw runtime_error("Syntax error: expected range in array declaration");
     }
     if(curr.type == TokenType::RBRACK) {
         node->add(new ParseNode("rbrack"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected ']' after array range");
     }
     if(curr.type == TokenType::OFSY) {
         node->add(new ParseNode("ofsy"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected 'of' in array declaration");
     }
 
     node->add(typeSpecification());
