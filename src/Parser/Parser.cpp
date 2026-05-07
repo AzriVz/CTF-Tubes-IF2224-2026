@@ -66,8 +66,8 @@ ParseNode* Parser::declarationPart() {
         varnode->add(new ParseNode("varsy"));
         advance();
         
-        ParseNode* idlist = new ParseNode("<identifier-list>");
-        if (curr.type == TokenType::IDENT) {
+        while (curr.type == TokenType::IDENT) {
+            ParseNode* idlist = new ParseNode("<identifier-list>");
             ParseNode* id = new ParseNode("ident");
             id->token = curr.value;
             idlist->add(id);
@@ -84,23 +84,23 @@ ParseNode* Parser::declarationPart() {
                     advance();
                 }
             }
-        }
-        varnode->add(idlist);
+            varnode->add(idlist);
 
-        if (curr.type == TokenType::COLON) {
-            varnode->add(new ParseNode("colon"));
-            advance();
-        }
-        if (curr.type == TokenType::IDENT) {
-            ParseNode* type = new ParseNode("<type> ");
-            type->add(new ParseNode("ident"));
-            type->children.back()->token = curr.value;
-            varnode->add(type);
-            advance();
-        }
-        if (curr.type == TokenType::SEMICOLON) {
-            varnode->add(new ParseNode("semicolon"));
-            advance();
+            if (curr.type == TokenType::COLON) {
+                varnode->add(new ParseNode("colon"));
+                advance();
+            } else {
+                throw runtime_error("Syntax error: expected ':' in var declaration");
+            }
+            
+            varnode->add(typeSpecification());
+            
+            if (curr.type == TokenType::SEMICOLON) {
+                varnode->add(new ParseNode("semicolon"));
+                advance();
+            } else {
+                throw runtime_error("Syntax error: expected ';' in var declaration");
+            }
         }
         node->add(varnode);
     }
@@ -199,23 +199,54 @@ ParseNode* Parser::typeDeclaration() {
 }
 
 ParseNode* Parser::typeSpecification() {
-    if(curr.type == TokenType::IDENT) {
-        ParseNode* n = new ParseNode("ident");
-        n->token=curr.value;
-        advance();
-        return n;
-    }
+    ParseNode* node = new ParseNode("<type>");
+    
     if(curr.type == TokenType::ARRAYSY) {
-        return arrayType();
+        node->add(arrayType());
+        return node;
     }
     if(curr.type == TokenType::LPARENT) {
-        return enumeratedType();
+        node->add(enumeratedType());
+        return node;
     }
     if(curr.type == TokenType::RECORDSY) {
-        return recordType();
+        node->add(recordType());
+        return node;
+    }
+    
+    if(curr.type == TokenType::PLUS || curr.type == TokenType::MINUS || 
+       curr.type == TokenType::INTCON || curr.type == TokenType::REALCON || 
+       curr.type == TokenType::CHARCON || curr.type == TokenType::STRING) {
+        node->add(rangeType());
+        return node;
+    }
+    
+    if(curr.type == TokenType::IDENT) {
+        ParseNode* const1 = constant();
+        if (curr.type == TokenType::PERIOD) {
+            ParseNode* rangeNode = new ParseNode("<range>");
+            rangeNode->add(const1);
+            
+            rangeNode->add(new ParseNode("period"));
+            advance();
+            if (curr.type == TokenType::PERIOD) {
+                rangeNode->add(new ParseNode("period"));
+                advance();
+            } else {
+                throw runtime_error("Syntax error: expected '..' in range");
+            }
+            rangeNode->add(constant());
+            node->add(rangeNode);
+        } else {
+            ParseNode* idNode = const1->children[0];
+            const1->children.clear();
+            delete const1;
+            node->add(idNode);
+        }
+        return node;
     }
 
-    return new ParseNode("<type>");
+    return node;
 }
 
 ParseNode* Parser::arrayType() {
@@ -246,17 +277,21 @@ ParseNode* Parser::arrayType() {
 
 ParseNode* Parser::rangeType() {
     ParseNode* node = new ParseNode("<range>");
-    node->add(factor());
+    node->add(constant());
     if (curr.type == TokenType::PERIOD) {
         node->add(new ParseNode("period"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected '..' in range");
     }
     if (curr.type == TokenType::PERIOD) {
         node->add(new ParseNode("period"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected '..' in range");
     }
 
-    node->add(factor());
+    node->add(constant());
     return node;
 }
 
@@ -299,6 +334,8 @@ ParseNode* Parser::recordType() {
     node->add(fieldList());
     if (curr.type == TokenType::ENDSY) {
         node->add(new ParseNode("endsy")); advance();
+    } else {
+        throw runtime_error("Syntax error: expected 'end' after record fields");
     }
 
     return node;
@@ -341,10 +378,6 @@ ParseNode* Parser::fieldPart() {
         advance();
     }
     node->add(typeSpecification());
-    if (curr.type == TokenType::SEMICOLON) {
-        node->add(new ParseNode("semicolon"));
-        advance();
-    }
     return node;
 }
 
@@ -560,25 +593,21 @@ ParseNode* Parser::statementList() {
 }
 
 ParseNode* Parser::statement() {
+    if(curr.type == TokenType::BEGINSY) return compoundStatement();
+    if(curr.type == TokenType::IFSY) return ifStatement();
+    if(curr.type == TokenType::CASESY) return caseStatement();
+    if(curr.type == TokenType::WHILESY) return whileStatement();
+    if(curr.type == TokenType::REPEATSY) return repeatStatement();
+    if(curr.type == TokenType::FORSY) return forStatement();
+    
     if(curr.type == TokenType::IDENT) {
-        ParseNode* first = variable();
-
-        if(curr.type == TokenType::BECOMES) {
-            ParseNode* node = new ParseNode("<assignment-statement>");
-            node->add(first);
-            node->add(new ParseNode("becomes"));
-            advance();
-            node->add(expression());
-            return node;
-        }
-
-        if(first->name != "ident") {
-            throw runtime_error("Syntax error: expected ':=' in assignment");
-        }
-
-        ParseNode* call = new ParseNode("<procedure/function-call>");
-        call->add(first);
-        if(curr.type == TokenType::LPARENT) {
+        ParseNode* id = new ParseNode("ident");
+        id->token = curr.value;
+        advance();
+        
+        if (curr.type == TokenType::LPARENT) {
+            ParseNode* call = new ParseNode("<procedure/function-call>");
+            call->add(id);
             call->add(new ParseNode("lparent"));
             advance();
             if(curr.type != TokenType::RPARENT) {
@@ -590,8 +619,33 @@ ParseNode* Parser::statement() {
             } else {
                 throw runtime_error("Syntax error: expected ')' after procedure/function call");
             }
+            return call;
+        } else {
+            ParseNode* varToUse = id;
+            if (curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
+                ParseNode* var = new ParseNode("<variable>");
+                var->add(id);
+                while(curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
+                    var->add(componentVariable());
+                }
+                varToUse = var;
+            }
+
+            if(curr.type == TokenType::BECOMES) {
+                ParseNode* node = new ParseNode("<assignment-statement>");
+                node->add(varToUse);
+                node->add(new ParseNode("becomes"));
+                advance();
+                node->add(expression());
+                return node;
+            } else if (varToUse == id) {
+                ParseNode* call = new ParseNode("<procedure/function-call>");
+                call->add(id);
+                return call;
+            }
+
+            throw runtime_error("Syntax error: expected ':=' in assignment");
         }
-        return call;
     }
 
     ParseNode* node = new ParseNode("<statement>");
@@ -815,14 +869,20 @@ ParseNode* Parser::procedureOrFunctionCall() {
         id->token=curr.value;
         node->add(id);
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected procedure/function name");
     }
     if(curr.type == TokenType::LPARENT) {
         node->add(new ParseNode("lparent"));
         advance();
-        node->add(parameterList());
+        if(curr.type != TokenType::RPARENT) {
+            node->add(parameterList());
+        }
         if(curr.type == TokenType::RPARENT) {
             node->add(new ParseNode("rparent"));
             advance();
+        } else {
+            throw runtime_error("Syntax error: expected ')'");
         }
     }
     return node;
@@ -843,10 +903,10 @@ ParseNode* Parser::expression() {
     ParseNode* node = new ParseNode("<expression>");
     node->add(simpleExpression());
 
-    while(curr.type == TokenType::PLUS || curr.type == TokenType::MINUS) {
-        ParseNode* op = new ParseNode(lexer.tokenTypeToString(curr.type));
-        advance();
-        node->add(op);
+    if(curr.type == TokenType::EQL || curr.type == TokenType::NEQ || 
+       curr.type == TokenType::GTR || curr.type == TokenType::GEQ || 
+       curr.type == TokenType::LSS || curr.type == TokenType::LEQ) {
+        node->add(relationalOperator());
         node->add(simpleExpression());
     }
     return node;
@@ -855,11 +915,18 @@ ParseNode* Parser::expression() {
 
 ParseNode* Parser::simpleExpression() {
     ParseNode* node = new ParseNode("<simple-expression>");
-    node->add(term());
-    while(curr.type == TokenType::PLUS || curr.type == TokenType::MINUS) {
+    
+    if(curr.type == TokenType::PLUS || curr.type == TokenType::MINUS) {
         ParseNode* op = new ParseNode(lexer.tokenTypeToString(curr.type));
+        op->token = curr.value;
         advance();
         node->add(op);
+    }
+    
+    node->add(term());
+    
+    while(curr.type == TokenType::PLUS || curr.type == TokenType::MINUS || curr.type == TokenType::ORSY) {
+        node->add(additiveOperator());
         node->add(term());
     }
     return node;
@@ -869,38 +936,32 @@ ParseNode* Parser::term() {
     ParseNode* node = new ParseNode("<term>");
     
     node->add(factor());
-    while(curr.type == TokenType::TIMES || curr.type == TokenType::RDIV) {
-        ParseNode* op = new ParseNode(lexer.tokenTypeToString(curr.type));
-        advance();
-        node->add(op);
+    while(curr.type == TokenType::TIMES || curr.type == TokenType::RDIV || 
+          curr.type == TokenType::IDIV || curr.type == TokenType::IMOD || 
+          curr.type == TokenType::ANDSY) {
+        node->add(multiplicativeOperator());
         node->add(factor());
     }
     return node;
 }
 
 ParseNode* Parser::factor() {
-    // factor= ident | intcon | realcon | charcon | string | (expression) | notsy factor | variable
+    ParseNode* node = new ParseNode("<factor>");
     if(curr.type == TokenType::NOTSY) {
-        ParseNode* node = new ParseNode("<factor>");
         node->add(new ParseNode("notsy"));
         advance();
         node->add(factor());
         return node;
     }
-    if(curr.type == TokenType::INTCON || curr.type == TokenType::REALCON) {
+    if(curr.type == TokenType::INTCON || curr.type == TokenType::REALCON || 
+       curr.type == TokenType::STRING || curr.type == TokenType::CHARCON) {
         ParseNode* n = new ParseNode(lexer.tokenTypeToString(curr.type));
         n->token = curr.value;
+        node->add(n);
         advance();
-        return n;
-    }
-    if(curr.type == TokenType::STRING || curr.type == TokenType::CHARCON) {
-        ParseNode* n = new ParseNode(lexer.tokenTypeToString(curr.type));
-        n->token = curr.value;
-        advance();
-        return n;
+        return node;
     }
     if(curr.type == TokenType::LPARENT) {
-        ParseNode* node = new ParseNode("<factor>");
         node->add(new ParseNode("lparent"));
         advance();
         node->add(expression());
@@ -913,13 +974,47 @@ ParseNode* Parser::factor() {
         return node;
     }
     if(curr.type == TokenType::IDENT) {
-        return variable();
+        ParseNode* id = new ParseNode("ident");
+        id->token = curr.value;
+        advance();
+        
+        if (curr.type == TokenType::LPARENT) {
+            ParseNode* call = new ParseNode("<procedure/function-call>");
+            call->add(id);
+            call->add(new ParseNode("lparent"));
+            advance();
+            if(curr.type != TokenType::RPARENT) {
+                call->add(parameterList());
+            }
+            if(curr.type == TokenType::RPARENT) {
+                call->add(new ParseNode("rparent"));
+                advance();
+            } else {
+                throw runtime_error("Syntax error: expected ')' after function call");
+            }
+            node->add(call);
+            return node;
+        } else {
+            if (curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
+                ParseNode* var = new ParseNode("<variable>");
+                var->add(id);
+                while(curr.type == TokenType::LBRACK || curr.type == TokenType::PERIOD) {
+                    var->add(componentVariable());
+                }
+                node->add(var);
+            } else {
+                node->add(id);
+            }
+            
+            return node;
+        }
     }
     // unknown factor
     ParseNode* n = new ParseNode("unknown");
     n->token = curr.value;
+    node->add(n);
     advance();
-    return n;
+    return node;
 }
 
 ParseNode* Parser::relationalOperator() {
