@@ -107,37 +107,36 @@ Program akan menampilkan parse tree berdasarkan grammar yang telah didefinisikan
 <td>Billy Ontoseno Irawan</td>
 <td>13524121</td>
 <td>
-  Laporan (Bab 1)<br/>
+  Laporan (Bab 1 dan 2)<br/>
 </td>
-<td>20  %</td>
+<td>25%</td>
 </tr>
 <tr>
 <td>Nathaniel Christian</td>
 <td>13524122</td>
 <td>
-  Laporan (Bab 3 dan 4)
-  Test cases
+  <code>Parser.cpp</code><br/>
+  <code>Parser.hpp</code><br/>
+  <code>main.cpp</code><br/>
 </td>
-<td>20%</td>
+<td>35%</td>
 </tr>
 <tr>
 <td>Azri Arzaq Pohan</td>
 <td>13524139</td>
 <td>
-  <code>Lexer.cpp</code><br/>
-  <code>Lexer.hpp</code><br/>
-  <code>main.cpp</code><br/>
-  Laporan (Bab 2)
+    Laporan (Bab 3 dan 4) <br/>
+    Test cases
 </td>
-<td>35%</td>
+<td>20%</td>
 </tr>
 <tr>
 <td>Rasyad Satyatma</td>
 <td>13524142</td>
 <td>
-    Diagram Transisi DFA
+    Test cases
 </td>
-<td>25%</td>
+<td>20%</td>
 </tr>
 
 </table>
