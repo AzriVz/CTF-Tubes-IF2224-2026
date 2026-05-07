@@ -316,6 +316,8 @@ ParseNode* Parser::enumeratedType() {
             ParseNode* id = new ParseNode("ident");
             id->token = curr.value;
             node->add(id); advance();
+        } else {
+            throw runtime_error("Syntax error: expected identifier in enumerated type");
         }
 
         while (curr.type == TokenType::COMMA) {
@@ -325,11 +327,15 @@ ParseNode* Parser::enumeratedType() {
                 ParseNode* id = new ParseNode("ident");
                 id->token = curr.value;
                 node->add(id); advance();
+            } else {
+                throw runtime_error("Syntax error: expected identifier after comma in enumerated type");
             }
         }
         if(curr.type == TokenType::RPARENT) {
             node->add(new ParseNode("rparent"));
             advance();
+        } else {
+            throw runtime_error("Syntax error: expected ')' in enumerated type");
         }
     }
     return node;
@@ -371,6 +377,8 @@ ParseNode* Parser::fieldPart() {
         ParseNode* id=new ParseNode("ident");
         id->token = curr.value;
         idlist->add(id); advance();
+    } else {
+        throw runtime_error("Syntax error: expected identifier in record field");
     }
 
     while(curr.type == TokenType::COMMA) {
@@ -380,6 +388,8 @@ ParseNode* Parser::fieldPart() {
             ParseNode* id = new ParseNode("ident");
             id->token = curr.value;
             idlist->add(id); advance();
+        } else {
+            throw runtime_error("Syntax error: expected identifier after comma in record field");
         }
     }
     node->add(idlist);
@@ -387,6 +397,8 @@ ParseNode* Parser::fieldPart() {
     if (curr.type == TokenType::COLON) {
         node->add(new ParseNode("colon"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected ':' in record field");
     }
     node->add(typeSpecification());
     return node;
@@ -527,6 +539,8 @@ ParseNode* Parser::formalParameterList() {
     if(curr.type == TokenType::LPARENT) {
         node->add(new ParseNode("lparent"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected '(' in formal parameter list");
     }
     node->add(parameterGroup());
     while(curr.type == TokenType::SEMICOLON) {
@@ -537,6 +551,8 @@ ParseNode* Parser::formalParameterList() {
     if(curr.type == TokenType::RPARENT) {
         node->add(new ParseNode("rparent"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected ')' in formal parameter list");
     }
     return node;
 }
@@ -548,6 +564,8 @@ ParseNode* Parser::parameterGroup() {
         ParseNode* id=new ParseNode("ident");
         id->token=curr.value;
         idlist->add(id); advance();
+    } else {
+        throw runtime_error("Syntax error: expected identifier in parameter group");
     }
     while(curr.type == TokenType::COMMA) {
         idlist->add(new ParseNode("comma"));
@@ -556,15 +574,21 @@ ParseNode* Parser::parameterGroup() {
             ParseNode* id=new ParseNode("ident");
             id->token=curr.value;
             idlist->add(id); advance();
+        } else {
+            throw runtime_error("Syntax error: expected identifier after comma in parameter group");
         }
     }
     node->add(idlist);
     if(curr.type == TokenType::COLON) {
         node->add(new ParseNode("colon"));
         advance();
+    } else {
+        throw runtime_error("Syntax error: expected ':' in parameter group");
     }
     if(curr.type == TokenType::IDENT || curr.type==TokenType::ARRAYSY) {
         node->add(typeSpecification());
+    } else {
+        throw runtime_error("Syntax error: expected type specification in parameter group");
     }
     return node;
 }
