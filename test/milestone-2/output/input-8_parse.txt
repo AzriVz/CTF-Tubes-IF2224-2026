@@ -86,8 +86,7 @@
     │   │       │   └── <component-variable>
     │   │       │       ├── lbrack
     │   │       │       ├── <index-list>
-    │   │       │       │   └── <factor>
-    │   │       │       │       └── intcon(1)
+    │   │       │       │   └── intcon(1)
     │   │       │       └── rbrack
     │   │       ├── becomes
     │   │       └── <expression>

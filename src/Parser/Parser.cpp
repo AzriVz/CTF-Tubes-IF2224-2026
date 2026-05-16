@@ -4,11 +4,16 @@ using namespace std;
 
 Parser::Parser(Lexer& l) : lexer(l) {
     curr = lexer.getNextToken();
+    while(curr.type == TokenType::COMMENT) {
+        curr = lexer.getNextToken();
+    }
 }
 
 Token Parser::advance() {
     Token t = curr;
-    curr = lexer.getNextToken();
+    do {
+        curr = lexer.getNextToken();
+    } while(curr.type == TokenType::COMMENT);
     return t;
 }
 
@@ -158,6 +163,8 @@ ParseNode* Parser::constant() {
             ParseNode* n = new ParseNode(lexer.tokenTypeToString(curr.type));
             n->token = curr.value;
             node->add(n); advance();
+        } else {
+            throw runtime_error("Syntax error: expected ident, intcon, or realcon after sign in constant");
         }
         return node;
     }
@@ -747,11 +754,26 @@ ParseNode* Parser::componentVariable() {
 ParseNode* Parser::indexList() {
     ParseNode* node = new ParseNode("<index-list>");
     
-    node->add(factor());
+    if(curr.type == TokenType::INTCON || curr.type == TokenType::CHARCON || curr.type == TokenType::IDENT) {
+        ParseNode* n = new ParseNode(lexer.tokenTypeToString(curr.type));
+        n->token = curr.value;
+        node->add(n);
+        advance();
+    } else {
+        throw runtime_error("Syntax error: expected intcon, charcon, or ident in index list");
+    }
+
     while(curr.type == TokenType::COMMA) {
         node->add(new ParseNode("comma"));
         advance();
-        node->add(factor());
+        if(curr.type == TokenType::INTCON || curr.type == TokenType::CHARCON || curr.type == TokenType::IDENT) {
+            ParseNode* n = new ParseNode(lexer.tokenTypeToString(curr.type));
+            n->token = curr.value;
+            node->add(n);
+            advance();
+        } else {
+            throw runtime_error("Syntax error: expected intcon, charcon, or ident in index list");
+        }
     }
     return node;
 }

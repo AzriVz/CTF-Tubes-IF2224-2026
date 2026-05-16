@@ -86,8 +86,7 @@
     │   │       │       │       │   └── <component-variable>
     │   │       │       │       │       ├── lbrack
     │   │       │       │       │       ├── <index-list>
-    │   │       │       │       │       │   └── <factor>
-    │   │       │       │       │       │       └── ident(i)
+    │   │       │       │       │       │   └── ident(i)
     │   │       │       │       │       └── rbrack
     │   │       │       │       ├── becomes
     │   │       │       │       └── <expression>
@@ -171,8 +170,7 @@
     │   │       │   └── <component-variable>
     │   │       │       ├── lbrack
     │   │       │       ├── <index-list>
-    │   │       │       │   └── <factor>
-    │   │       │       │       └── intcon(2)
+    │   │       │       │   └── intcon(2)
     │   │       │       └── rbrack
     │   │       ├── becomes
     │   │       └── <expression>
