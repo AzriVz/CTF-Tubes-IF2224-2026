@@ -641,6 +641,10 @@ ParseNode* Parser::statement() {
     if(curr.type == TokenType::WHILESY) return whileStatement();
     if(curr.type == TokenType::REPEATSY) return repeatStatement();
     if(curr.type == TokenType::FORSY) return forStatement();
+
+    if(curr.type == TokenType::SEMICOLON) {
+        return new ParseNode("<empty-statement>");
+    }
     
     if(curr.type == TokenType::IDENT) {
         ParseNode* id = new ParseNode("ident");
@@ -866,7 +870,13 @@ ParseNode* Parser::whileStatement() {
         node->add(new ParseNode("dosy"));
         advance();
     }
-    node->add(statement());
+    node->add(compoundStatement());
+    if(curr.type == TokenType::SEMICOLON) {
+        node->add(new ParseNode("semicolon"));
+        advance();
+    } else {
+        throw runtime_error("Syntax error: expected ';' after while statement");
+    }
     return node;
 }
 
@@ -915,7 +925,13 @@ ParseNode* Parser::forStatement() {
         node->add(new ParseNode("dosy"));
         advance();
     }
-    node->add(statement());
+    node->add(compoundStatement());
+    if(curr.type == TokenType::SEMICOLON) {
+        node->add(new ParseNode("semicolon"));
+        advance();
+    } else {
+        throw runtime_error("Syntax error: expected ';' after for statement");
+    }
     return node;
 }
 
