@@ -102,16 +102,13 @@ bool SemanticAnalyzer::isBoolean(int typeCode) const
     return typeCode == symTable.getTypeBoolean();
 }
 
-bool SemanticAnalyzer::isOrdinal(int typeCode) const
-{
-
+bool SemanticAnalyzer::isOrdinal(int typeCode) const {
     return typeCode == symTable.getTypeInteger() ||
            typeCode == symTable.getTypeChar() ||
            typeCode == symTable.getTypeBoolean();
 }
 
-bool SemanticAnalyzer::isCompatible(int typeCode1, int typeCode2) const
-{
+bool SemanticAnalyzer::isCompatible(int typeCode1, int typeCode2) const {
     if (typeCode1 == typeCode2)
         return true;
 
@@ -130,8 +127,7 @@ bool SemanticAnalyzer::isCompatible(int typeCode1, int typeCode2) const
     return false;
 }
 
-bool SemanticAnalyzer::isAssignmentCompatible(int targetType, int valueType) const
-{
+bool SemanticAnalyzer::isAssignmentCompatible(int targetType, int valueType) const {
     if (targetType == symTable.getTypeReal() && valueType == symTable.getTypeInteger())
         return true;
 
@@ -141,8 +137,7 @@ bool SemanticAnalyzer::isAssignmentCompatible(int targetType, int valueType) con
     return false;
 }
 
-int SemanticAnalyzer::inferBinOpType(const std::string &op, int leftType, int rightType, int /*line*/)
-{
+int SemanticAnalyzer::inferBinOpType(const std::string &op, int leftType, int rightType, int /*line*/) {
     if (op == "+" || op == "-" || op == "*")
     {
         if (isNumeric(leftType) && isNumeric(rightType))
@@ -206,8 +201,7 @@ int SemanticAnalyzer::inferBinOpType(const std::string &op, int leftType, int ri
     return 0;
 }
 
-int SemanticAnalyzer::inferUnaryOpType(const std::string &op, int operandType, int /*line*/)
-{
+int SemanticAnalyzer::inferUnaryOpType(const std::string &op, int operandType, int /*line*/) {
     if (op == "+" || op == "-")
     {
         if (isNumeric(operandType))

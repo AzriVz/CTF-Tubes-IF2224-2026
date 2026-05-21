@@ -8,8 +8,7 @@
 
 class ASTNode;
 
-class ASTNode
-{
+class ASTNode {
 public:
     std::string type;
     int level;
@@ -32,8 +31,7 @@ public:
     void print(std::ostream &out, const std::string &prefix = "", bool isLast = true) const;
 };
 
-class ProgramNode : public ASTNode
-{
+class ProgramNode : public ASTNode {
 public:
     std::string name;
     ASTNode *declarations;
@@ -45,8 +43,7 @@ public:
     std::string annotation() const override;
 };
 
-class BlockNode : public ASTNode
-{
+class BlockNode : public ASTNode {
 public:
     int blockIndex;
 
@@ -55,8 +52,7 @@ public:
     std::string annotation() const override;
 };
 
-class DeclarationListNode : public ASTNode
-{
+class DeclarationListNode : public ASTNode {
 public:
     DeclarationListNode();
     std::string nodeName() const override { return "DeclarationListNode"; }
@@ -64,8 +60,7 @@ public:
     void addDeclaration(ASTNode *decl);
 };
 
-class VarDeclNode : public ASTNode
-{
+class VarDeclNode : public ASTNode {
 public:
     std::string varName;
     std::string typeName;
@@ -77,8 +72,7 @@ public:
     std::string annotation() const override;
 };
 
-class ConstDeclNode : public ASTNode
-{
+class ConstDeclNode : public ASTNode {
 public:
     std::string constName;
     ASTNode *value;
@@ -89,8 +83,7 @@ public:
     std::string annotation() const override;
 };
 
-class TypeDeclNode : public ASTNode
-{
+class TypeDeclNode : public ASTNode {
 public:
     std::string typeName;
     ASTNode *typeDef;
@@ -101,8 +94,7 @@ public:
     std::string annotation() const override;
 };
 
-class AssignNode : public ASTNode
-{
+class AssignNode : public ASTNode {
 public:
     ASTNode *target;
     ASTNode *value;
@@ -113,8 +105,7 @@ public:
     std::string annotation() const override;
 };
 
-class ProcCallNode : public ASTNode
-{
+class ProcCallNode : public ASTNode {
 public:
     std::string procName;
     std::vector<ASTNode *> args;
@@ -125,8 +116,7 @@ public:
     std::string annotation() const override;
 };
 
-class IfNode : public ASTNode
-{
+class IfNode : public ASTNode {
 public:
     ASTNode *condition;
     ASTNode *thenStmt;
@@ -137,8 +127,7 @@ public:
     std::string annotation() const override;
 };
 
-class WhileNode : public ASTNode
-{
+class WhileNode : public ASTNode {
 public:
     ASTNode *condition;
     ASTNode *body;
@@ -148,8 +137,7 @@ public:
     std::string annotation() const override;
 };
 
-class ForNode : public ASTNode
-{
+class ForNode : public ASTNode {
 public:
     std::string loopVar;
     std::string direction;
@@ -164,8 +152,7 @@ public:
     std::string annotation() const override;
 };
 
-class RepeatNode : public ASTNode
-{
+class RepeatNode : public ASTNode {
 public:
     ASTNode *body;
     ASTNode *condition;
@@ -175,8 +162,7 @@ public:
     std::string annotation() const override;
 };
 
-class CaseBranchNode : public ASTNode
-{
+class CaseBranchNode : public ASTNode {
 public:
     std::vector<ASTNode *> labels;
     ASTNode *statement;
@@ -185,8 +171,7 @@ public:
     std::string nodeName() const override { return "CaseBranch"; }
 };
 
-class CaseNode : public ASTNode
-{
+class CaseNode : public ASTNode {
 public:
     ASTNode *selector;
     std::vector<CaseBranchNode *> branches;
@@ -196,15 +181,13 @@ public:
     std::string annotation() const override;
 };
 
-class EmptyNode : public ASTNode
-{
+class EmptyNode : public ASTNode {
 public:
     EmptyNode();
     std::string nodeName() const override { return "EmptyNode"; }
 };
 
-class BinOpNode : public ASTNode
-{
+class BinOpNode : public ASTNode {
 public:
     std::string op;
 
@@ -217,8 +200,7 @@ public:
     std::string annotation() const override;
 };
 
-class UnaryOpNode : public ASTNode
-{
+class UnaryOpNode : public ASTNode {
 public:
     std::string op;
     ASTNode *operand;
@@ -229,8 +211,7 @@ public:
     std::string annotation() const override;
 };
 
-class VarNode : public ASTNode
-{
+class VarNode : public ASTNode {
 public:
     std::string name;
 
@@ -240,8 +221,7 @@ public:
     std::string annotation() const override;
 };
 
-class ArrayAccessNode : public ASTNode
-{
+class ArrayAccessNode : public ASTNode {
 public:
     ASTNode *array;
     ASTNode *index;
@@ -251,8 +231,7 @@ public:
     std::string annotation() const override;
 };
 
-class RecordAccessNode : public ASTNode
-{
+class RecordAccessNode : public ASTNode {
 public:
     ASTNode *record;
     std::string field;
@@ -263,8 +242,7 @@ public:
     std::string annotation() const override;
 };
 
-class NumberNode : public ASTNode
-{
+class NumberNode : public ASTNode {
 public:
     int value;
 
@@ -274,8 +252,7 @@ public:
     std::string annotation() const override;
 };
 
-class RealNode : public ASTNode
-{
+class RealNode : public ASTNode {
 public:
     double value;
 
@@ -285,8 +262,7 @@ public:
     std::string annotation() const override;
 };
 
-class BooleanNode : public ASTNode
-{
+class BooleanNode : public ASTNode {
 public:
     bool value;
 
@@ -296,8 +272,7 @@ public:
     std::string annotation() const override;
 };
 
-class StringNode : public ASTNode
-{
+class StringNode : public ASTNode {
 public:
     std::string value;
 
@@ -307,8 +282,7 @@ public:
     std::string annotation() const override;
 };
 
-class CharNode : public ASTNode
-{
+class CharNode : public ASTNode {
 public:
     char value;
 
@@ -318,8 +292,7 @@ public:
     std::string annotation() const override;
 };
 
-class FuncCallNode : public ASTNode
-{
+class FuncCallNode : public ASTNode {
 public:
     std::string funcName;
     std::vector<ASTNode *> args;
@@ -330,8 +303,7 @@ public:
     std::string annotation() const override;
 };
 
-class SubprogramDeclNode : public ASTNode
-{
+class SubprogramDeclNode : public ASTNode {
 public:
     std::string kind;
     std::string subName;
@@ -347,8 +319,7 @@ public:
     std::string annotation() const override;
 };
 
-class ArrayTypeNode : public ASTNode
-{
+class ArrayTypeNode : public ASTNode {
 public:
     ASTNode *indexType;
     ASTNode *elementType;
@@ -358,8 +329,7 @@ public:
     std::string annotation() const override;
 };
 
-class RecordTypeNode : public ASTNode
-{
+class RecordTypeNode : public ASTNode {
 public:
     std::vector<VarDeclNode *> fields;
 
@@ -368,8 +338,7 @@ public:
     std::string annotation() const override;
 };
 
-class RangeNode : public ASTNode
-{
+class RangeNode : public ASTNode {
 public:
     ASTNode *low;
     ASTNode *high;
@@ -379,8 +348,7 @@ public:
     std::string annotation() const override;
 };
 
-class EnumeratedNode : public ASTNode
-{
+class EnumeratedNode : public ASTNode {
 public:
     std::vector<std::string> values;
 
@@ -390,27 +358,22 @@ public:
     std::string annotation() const override;
 };
 
-namespace ASTHelper
-{
-    inline std::string formatAnnotation(const std::string &type, int level, int tabRef)
-    {
+namespace ASTHelper {
+    inline std::string formatAnnotation(const std::string &type, int level, int tabRef) {
         std::ostringstream oss;
         bool hasAny = false;
         oss << "  ->  ";
-        if (!type.empty() && type != "void")
-        {
+        if (!type.empty() && type != "void") {
             oss << "type:" << type;
             hasAny = true;
         }
-        if (level > 0)
-        {
+        if (level > 0) {
             if (hasAny)
                 oss << ", ";
             oss << "lev:" << level;
             hasAny = true;
         }
-        if (tabRef > 0)
-        {
+        if (tabRef > 0) {
             if (hasAny)
                 oss << ", ";
             oss << "tab_index:" << tabRef;
