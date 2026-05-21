@@ -12,7 +12,7 @@ OBJS = $(patsubst %.cpp, $(BIN_DIR)/%.o, $(SRCS))
 TARGET = $(BIN_DIR)/arion-compiler
 TARGET_INPUT := $(if $(word 2,$(MAKECMDGOALS)),$(word 2,$(MAKECMDGOALS)),$(INPUT_DIR)/input-1.txt)
 
-.PHONY: all build run parse lexer clean
+.PHONY: all build run parse lexer semantic clean
 
 all: $(TARGET)
 
@@ -26,6 +26,9 @@ parse: all
 
 lexer: all
 	./$(TARGET) $(TARGET_INPUT)
+
+semantic: all
+	./$(TARGET) --semantic $(TARGET_INPUT)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(dir $@)

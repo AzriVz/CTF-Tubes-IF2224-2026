@@ -56,12 +56,23 @@ make parse
 ```
 
 ```bash
-make parse test/milestone-1/input/input-1.txt
+make parse test/milestone-2/input/input-1.txt
 ```
 
 ```bash
-./bin/arion-compiler /test/milestone-X/<input-file.txt>
+./bin/arion-compiler /test/milestone-2/input/input-1.txt
 ```
+
+#### Semantic mode
+
+```bash
+make semantic
+```
+
+```bash
+make semantic test/milestone-2/input/input-1.txt
+```
+
 
 
 **Output:**
@@ -74,21 +85,45 @@ Program akan menampilkan parse tree berdasarkan grammar yang telah didefinisikan
 ```
 .
 └── CTF-Tubes-IF2224-2026
+    ├── Makefile
+    ├── README.md
+    ├── bin
+    │   └── arion-compiler
     ├── doc
-    |   ├── Laporan-1-CTF.pdf
+    │   ├── Laporan-1-CTF.pdf
+    │   └── Laporan-2-CTF.pdf
     ├── src
     │   ├── Lexer
     │   │   ├── Lexer.cpp
     │   │   └── Lexer.hpp
+    │   ├── Parser
+    │   │   ├── Parser.cpp
+    │   │   └── Parser.hpp
+    │   ├── Semantic
+    │   │   ├── AST.cpp
+    │   │   ├── AST.hpp
+    │   │   ├── SemanticAnalyzer.cpp
+    │   │   ├── SemanticAnalyzer.hpp
+    │   │   ├── SymbolTable.cpp
+    │   │   └── SymbolTable.hpp
     │   └── main.cpp
-    ├── test
-    │   └── milestone-1
-    │      ├── input
-    │      │   └── *.txt
-    │      └── output
-    │          └── output*.txt
-    ├── Makefile
-    └── README.md
+    └── test
+        ├── milestone-1
+        │   ├── input
+        │   │   └── *.txt
+        │   ├── output
+        │   │   └── output-*.txt
+        │   └── README.md
+        ├── milestone-2
+        │   ├── input
+        │   │   └── *.txt
+        │   └── output
+        │       └── *_parse.txt
+        └── milestone-3
+            ├── input
+            │   └── *.txt
+            └── output
+                └── output-*.txt
 ```
 
 ---
@@ -107,19 +142,17 @@ Program akan menampilkan parse tree berdasarkan grammar yang telah didefinisikan
 <td>Billy Ontoseno Irawan</td>
 <td>13524121</td>
 <td>
-  Laporan (Bab 1 dan 2)<br/>
+  Laporan (Bab 1)<br/>
 </td>
-<td>25%</td>
+<td>22%</td>
 </tr>
 <tr>
 <td>Nathaniel Christian</td>
 <td>13524122</td>
 <td>
-  <code>Parser.cpp</code><br/>
-  <code>Parser.hpp</code><br/>
-  <code>main.cpp</code><br/>
+  Laporan (Bab 2)<br/>
 </td>
-<td>35%</td>
+<td>22%</td>
 </tr>
 <tr>
 <td>Azri Arzaq Pohan</td>
@@ -128,15 +161,15 @@ Program akan menampilkan parse tree berdasarkan grammar yang telah didefinisikan
     Laporan (Bab 3 dan 4) <br/>
     Test cases
 </td>
-<td>20%</td>
+<td>21%</td>
 </tr>
 <tr>
 <td>Rasyad Satyatma</td>
 <td>13524142</td>
 <td>
-    Test cases
+  <code>./src/Semantic</code><br/>
 </td>
-<td>20%</td>
+<td>35%</td>
 </tr>
 
 </table>
