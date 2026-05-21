@@ -154,7 +154,7 @@ Program akan menampilkan token, parse tree, atau hasil analisis semantik sesuai 
 <td>Nathaniel Christian</td>
 <td>13524122</td>
 <td>
-  Laporan (Bab 2)<br/>
+  Laporan (Bab 2 dan 4)<br/>
 </td>
 <td>22%</td>
 </tr>
@@ -162,7 +162,7 @@ Program akan menampilkan token, parse tree, atau hasil analisis semantik sesuai 
 <td>Azri Arzaq Pohan</td>
 <td>13524139</td>
 <td>
-    Laporan (Bab 3 dan 4) <br/>
+    Laporan (Bab 3) <br/>
     Test cases
 </td>
 <td>21%</td>
