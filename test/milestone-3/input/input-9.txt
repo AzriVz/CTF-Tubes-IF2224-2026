@@ -1,0 +1,10 @@
+program TestArray;
+var
+  arr: array[1..5] of Integer;
+  i: Integer;
+  r: Real;
+begin
+  i := 3;
+  arr[i] := 10;
+  arr[r] := 5;
+end.

@@ -1,0 +1,17 @@
+program Scope;
+var
+  globalVar: Integer;
+
+procedure Inner;
+var
+  localVar: Integer;
+begin
+  localVar := 10;
+  globalVar := localVar + 1;
+end;
+
+begin
+  globalVar := 0;
+  Inner();
+  writeln(globalVar);
+end.

@@ -1,0 +1,80 @@
+=== Decorated AST ===
+ProgramNode(name: 'ValidBasic')  ->  tab_index:41
+    ├── DeclarationListNode
+    │   └── DeclarationListNode
+    │       ├── VarDecl('a')  ->  tab_index:42, type:integer, lev:0
+    │       └── VarDecl('b')  ->  tab_index:43, type:integer, lev:0
+    └── BlockNode  ->  block_index:0
+        └── DeclarationListNode
+            ├── Assign  ->  type:void
+            │   ├── 'a'  ->  tab_index:42, type:Integer
+            │   └── 5  ->  type:Integer
+            ├── Assign  ->  type:void
+            │   ├── 'b'  ->  tab_index:43, type:Integer
+            │   └── BinOp '+'  ->  type:Integer
+            │       ├── 'a'  ->  tab_index:42, type:Integer
+            │       └── 10  ->  type:Integer
+            └── ProcCall(writeln)  ->  tab_index:39
+                └── 'b'  ->  tab_index:43, type:Integer
+
+=== tab (Identifier Table) ===
+idx   id              obj           type  ref   nrm   lev   adr   link  
+----------------------------------------------------------------------
+0     and             reserved      0     0     1     0     0     0     
+1     array           reserved      0     0     1     0     0     0     
+2     begin           reserved      0     0     1     0     0     1     
+3     case            reserved      0     0     1     0     0     2     
+4     const           reserved      0     0     1     0     0     3     
+5     div             reserved      0     0     1     0     0     4     
+6     downto          reserved      0     0     1     0     0     5     
+7     do              reserved      0     0     1     0     0     6     
+8     else            reserved      0     0     1     0     0     7     
+9     end             reserved      0     0     1     0     0     8     
+10    for             reserved      0     0     1     0     0     9     
+11    function        reserved      0     0     1     0     0     10    
+12    if              reserved      0     0     1     0     0     11    
+13    mod             reserved      0     0     1     0     0     12    
+14    not             reserved      0     0     1     0     0     13    
+15    of              reserved      0     0     1     0     0     14    
+16    or              reserved      0     0     1     0     0     15    
+17    procedure       reserved      0     0     1     0     0     16    
+18    program         reserved      0     0     1     0     0     17    
+19    record          reserved      0     0     1     0     0     18    
+20    repeat          reserved      0     0     1     0     0     19    
+21    integer         reserved      0     0     1     0     0     20    
+22    real            reserved      0     0     1     0     0     21    
+23    boolean         reserved      0     0     1     0     0     22    
+24    char            reserved      0     0     1     0     0     23    
+25    string          reserved      0     0     1     0     0     24    
+26    then            reserved      0     0     1     0     0     25    
+27    to              reserved      0     0     1     0     0     26    
+28    type            reserved      0     0     1     0     0     27    
+29    until           reserved      0     0     1     0     0     28    
+30    var             reserved      0     0     1     0     0     29    
+31    while           reserved      0     0     1     0     0     30    
+32    Integer         type          32    0     1     0     0     31    
+33    Real            type          33    0     1     0     0     32    
+34    Boolean         type          34    0     1     0     0     33    
+35    Char            type          35    0     1     0     0     34    
+36    String          type          36    0     1     0     0     35    
+37    True            constant      34    0     1     0     1     36    
+38    False           constant      34    0     1     0     0     37    
+39    Writeln         procedure     0     0     1     0     0     38    
+40    Readln          procedure     0     0     1     0     0     39    
+41    ValidBasic      program       0     0     1     0     0     40    
+42    a               variable      32    0     1     0     0     41    
+43    b               variable      32    0     1     0     1     42    
+
+=== btab (Block Table) ===
+idx   last    lpar    psze    vsze    
+----------------------------------------
+0     43      0       0       2       
+
+=== atab (Array Table) ===
+(empty)
+
+=== Errors ===
+No errors found.
+
+=== Warnings ===
+No warnings.

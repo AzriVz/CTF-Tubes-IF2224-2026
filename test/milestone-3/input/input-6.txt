@@ -1,0 +1,10 @@
+program BooleanExpression;
+var
+  a, b: integer;
+  ok: boolean;
+begin
+  a := 10;
+  b := 20;
+  ok := (a < b) and True;
+  writeln(ok);
+end.

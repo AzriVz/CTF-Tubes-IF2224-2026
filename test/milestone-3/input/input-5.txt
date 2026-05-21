@@ -1,0 +1,8 @@
+program InvalidAssignment;
+var
+  n: integer;
+  s: string;
+begin
+  s := 'hello';
+  n := s;
+end.

@@ -1,0 +1,7 @@
+program DuplicateIdentifier;
+var
+  x: integer;
+  x: real;
+begin
+  x := 5;
+end.

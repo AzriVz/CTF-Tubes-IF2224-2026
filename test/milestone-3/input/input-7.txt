@@ -1,0 +1,8 @@
+program InvalidIfCondition;
+var
+  x: integer;
+begin
+  x := 5;
+  if x then
+    x := 10;
+end.

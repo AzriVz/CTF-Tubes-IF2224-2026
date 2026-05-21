@@ -1,0 +1,10 @@
+program ConstExpression;
+const
+  base == 10;
+  inc == 5;
+var
+  result: integer;
+begin
+  result := base + inc * 2;
+  writeln(result);
+end.
