@@ -60,7 +60,7 @@ make parse test/milestone-2/input/input-1.txt
 ```
 
 ```bash
-./bin/arion-compiler /test/milestone-2/input/input-1.txt
+./bin/arion-compiler --parse test/milestone-2/input/input-1.txt
 ```
 
 #### Semantic mode
@@ -70,13 +70,17 @@ make semantic
 ```
 
 ```bash
-make semantic test/milestone-2/input/input-1.txt
+make semantic test/milestone-3/input/input-1.txt
+```
+
+```bash
+./bin/arion-compiler --semantic test/milestone-3/input/input-1.txt
 ```
 
 
 
 **Output:**
-Program akan menampilkan parse tree berdasarkan grammar yang telah didefinisikan.
+Program akan menampilkan token, parse tree, atau hasil analisis semantik sesuai mode yang digunakan.
 
 ---
 
