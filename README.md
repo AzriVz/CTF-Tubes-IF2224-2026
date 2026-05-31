@@ -77,10 +77,24 @@ make semantic test/milestone-3/input/input-1.txt
 ./bin/arion-compiler --semantic test/milestone-3/input/input-1.txt
 ```
 
+#### Intermediate Code mode
+
+```bash
+make ic
+```
+
+```bash
+make ic test/milestone-4/input/input-1.txt
+```
+
+```bash
+./bin/arion-compiler --ic test/milestone-4/input/input-1.txt
+```
+
 
 
 **Output:**
-Program akan menampilkan token, parse tree, atau hasil analisis semantik sesuai mode yang digunakan.
+Program akan menampilkan token, parse tree, hasil analisis semantik, atau intermediate code sesuai mode yang digunakan.
 
 ---
 
