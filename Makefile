@@ -6,13 +6,13 @@ LEXER_DIR = src/Lexer
 BIN_DIR = bin
 INPUT_DIR = test/milestone-1/input
 
-SRCS = $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp) $(wildcard $(LEXER_DIR)/*.cpp)
+SRCS = $(sort $(wildcard $(SRC_DIR)/*.cpp) $(wildcard $(SRC_DIR)/*/*.cpp) $(wildcard $(LEXER_DIR)/*.cpp))
 OBJS = $(patsubst %.cpp, $(BIN_DIR)/%.o, $(SRCS))
 
 TARGET = $(BIN_DIR)/arion-compiler
 TARGET_INPUT := $(if $(word 2,$(MAKECMDGOALS)),$(word 2,$(MAKECMDGOALS)),$(INPUT_DIR)/input-1.txt)
 
-.PHONY: all build run parse lexer semantic clean
+.PHONY: all build run parse lexer semantic ic clean
 
 all: $(TARGET)
 
@@ -29,6 +29,9 @@ lexer: all
 
 semantic: all
 	./$(TARGET) --semantic $(TARGET_INPUT)
+
+ic: all
+	./$(TARGET) --ic $(TARGET_INPUT)
 
 $(TARGET): $(OBJS)
 	@mkdir -p $(dir $@)
