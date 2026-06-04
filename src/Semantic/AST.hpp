@@ -14,6 +14,7 @@ public:
     int level;
     int tabRef;
     int line;
+    int storageSize;
 
     std::vector<ASTNode *> children;
 

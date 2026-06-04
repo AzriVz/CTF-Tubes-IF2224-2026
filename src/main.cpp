@@ -6,6 +6,8 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <vector>
 using namespace std;
 
 int main(int argc, char *argv[]) {
@@ -128,14 +130,18 @@ int main(int argc, char *argv[]) {
 
             generator.print(cout);
             bool hasRuntimeErrors = false;
+            ostringstream runtimeOutput;
+            vector<string> runtimeErrors;
             if (!generator.hasErrors()) {
                 cout << endl << "=== Program Output ===" << endl;
                 StackMachineInterpreter interpreter;
-                interpreter.execute(generator.getInstructions(), cout);
+                interpreter.execute(generator.getInstructions(), runtimeOutput);
+                cout << runtimeOutput.str();
                 if (interpreter.hasErrors()) {
                     hasRuntimeErrors = true;
                     cerr << "Runtime execution failed." << endl;
                     for (const auto &err : interpreter.getErrors()) {
+                        runtimeErrors.push_back(err);
                         cerr << err << endl;
                     }
                 }
@@ -153,11 +159,10 @@ int main(int argc, char *argv[]) {
             generator.print(out);
             if (!generator.hasErrors()) {
                 out << endl << "=== Program Output ===" << endl;
-                StackMachineInterpreter fileInterpreter;
-                fileInterpreter.execute(generator.getInstructions(), out);
-                if (fileInterpreter.hasErrors()) {
+                out << runtimeOutput.str();
+                if (hasRuntimeErrors) {
                     out << endl << "=== Runtime Errors ===" << endl;
-                    for (const auto &err : fileInterpreter.getErrors()) {
+                    for (const auto &err : runtimeErrors) {
                         out << err << endl;
                     }
                 }

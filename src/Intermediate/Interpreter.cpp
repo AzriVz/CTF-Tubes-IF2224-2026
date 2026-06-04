@@ -1,8 +1,10 @@
 #include "Interpreter.hpp"
 #include <cerrno>
+#include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 using namespace std;
@@ -66,22 +68,27 @@ string StackMachineInterpreter::StackValue::toOutputString() const {
     return to_string(intValue);
 }
 
-StackMachineInterpreter::StackMachineInterpreter(int stackSize, int stepLimit)
-    : stack(stackSize), pc(0), sp(-1), currentBase(0), halted(false), maxSteps(stepLimit) {}
+StackMachineInterpreter::StackMachineInterpreter(int stackSize, int stepLimit, int callDepthLimit)
+    : stack(stackSize), pc(0), sp(-1), currentBase(0), halted(false),
+      maxSteps(stepLimit), callDepth(0), maxCallDepth(callDepthLimit) {}
 
 void StackMachineInterpreter::reset() {
     for (size_t i = 0; i < stack.size(); i++) {
         stack[i] = StackValue();
     }
     errors.clear();
+    frames.clear();
     pc = 0;
     sp = -1;
     currentBase = 0;
     halted = false;
+    callDepth = 0;
 }
 
 void StackMachineInterpreter::execute(const vector<Instruction> &instructions, ostream &out) {
     reset();
+    if (!validateProgram(instructions))
+        return;
 
     int steps = 0;
     while (!halted && pc >= 0 && pc < (int)instructions.size()) {
@@ -101,8 +108,11 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             }
 
             int newSp = currentBase + frameSize - 1;
-            if (!ensureIndex(newSp))
+            if (newSp < 0 || newSp >= (int)stack.size()) {
+                addError("Stack overflow: INT frame allocation exceeds stack size at line " +
+                         to_string(instruction.line));
                 break;
+            }
 
             if (currentBase == 0 && sp == -1) {
                 for (int i = 0; i <= newSp; i++) {
@@ -118,6 +128,7 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             }
 
             sp = newSp;
+            frames[currentBase] = FrameInfo(currentBase, newSp);
         }
         else if (instruction.op == "LIT") {
             if (!push(parseLiteral(instruction.argument)))
@@ -127,7 +138,7 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             int resolvedBase = base(instruction.level);
             int address = parseIntArgument(instruction);
             int index = resolvedBase + address;
-            if (!errors.empty() || !ensureIndex(index))
+            if (!errors.empty() || !validateDataAddress(index, "read", instruction.line))
                 break;
             if (!push(stack[index]))
                 break;
@@ -137,7 +148,7 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             int address = parseIntArgument(instruction);
             int index = resolvedBase + address;
             StackValue value;
-            if (!errors.empty() || !ensureIndex(index) || !pop(value))
+            if (!errors.empty() || !validateDataAddress(index, "write", instruction.line) || !pop(value))
                 break;
             stack[index] = value;
         }
@@ -145,7 +156,7 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             int resolvedBase = base(instruction.level);
             int address = parseIntArgument(instruction);
             int index = resolvedBase + address;
-            if (!errors.empty() || !ensureIndex(index))
+            if (!errors.empty() || !validateDataAddress(index, "address", instruction.line))
                 break;
             if (!push(StackValue::fromInt(index)))
                 break;
@@ -155,7 +166,7 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             if (!pop(address))
                 break;
             int index = address.asInt();
-            if (!ensureIndex(index))
+            if (!validateDataAddress(index, "indirect read", instruction.line))
                 break;
             if (!push(stack[index]))
                 break;
@@ -166,9 +177,47 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             if (!pop(address) || !pop(value))
                 break;
             int index = address.asInt();
-            if (!ensureIndex(index))
+            if (!validateDataAddress(index, "indirect write", instruction.line))
                 break;
             stack[index] = value;
+        }
+        else if (instruction.op == "CPY") {
+            int size = parseIntArgument(instruction);
+            StackValue destination;
+            StackValue source;
+            if (size <= 0) {
+                addError("Invalid CPY size " + to_string(size) + " at line " + to_string(instruction.line));
+                break;
+            }
+            if (!pop(destination) || !pop(source))
+                break;
+            int destinationIndex = destination.asInt();
+            int sourceIndex = source.asInt();
+            if (!validateDataBlock(sourceIndex, size, "copy source", instruction.line) ||
+                !validateDataBlock(destinationIndex, size, "copy destination", instruction.line))
+                break;
+            vector<StackValue> copied;
+            for (int i = 0; i < size; i++) {
+                copied.push_back(stack[sourceIndex + i]);
+            }
+            for (int i = 0; i < size; i++) {
+                stack[destinationIndex + i] = copied[i];
+            }
+        }
+        else if (instruction.op == "CHK") {
+            if (sp < 0) {
+                addError("Stack underflow on CHK at line " + to_string(instruction.line));
+                break;
+            }
+            int low = instruction.level;
+            int high = parseIntArgument(instruction);
+            int value = stack[sp].asInt();
+            if (value < low || value > high) {
+                addError("IndexOutOfBoundsException: index " + to_string(value) +
+                         " is outside bounds " + to_string(low) + ".." +
+                         to_string(high) + " at line " + to_string(instruction.line));
+                break;
+            }
         }
         else if (instruction.op == "REA") {
             string token;
@@ -181,10 +230,8 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
         }
         else if (instruction.op == "JMP") {
             int target = parseIntArgument(instruction);
-            if (target < 0 || target > (int)instructions.size()) {
-                addError("Invalid JMP target " + to_string(target) + " at line " + to_string(instruction.line));
+            if (!validateJumpTarget(target, (int)instructions.size(), "JMP", instruction.line))
                 break;
-            }
             pc = target;
         }
         else if (instruction.op == "JPC") {
@@ -193,10 +240,8 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             if (!pop(condition))
                 break;
             if (condition.asInt() == 0) {
-                if (target < 0 || target > (int)instructions.size()) {
-                    addError("Invalid JPC target " + to_string(target) + " at line " + to_string(instruction.line));
+                if (!validateJumpTarget(target, (int)instructions.size(), "JPC", instruction.line))
                     break;
-                }
                 pc = target;
             }
         }
@@ -204,12 +249,15 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             int target = 0;
             int paramCount = 0;
             parseCallArgument(instruction, target, paramCount);
-            if (target < 0 || target >= (int)instructions.size()) {
-                addError("Invalid CAL target " + to_string(target) + " at line " + to_string(instruction.line));
+            if (!validateJumpTarget(target, (int)instructions.size(), "CAL", instruction.line))
                 break;
-            }
             if (paramCount < 0 || paramCount > sp + 1) {
                 addError("Invalid parameter count " + to_string(paramCount) + " at line " + to_string(instruction.line));
+                break;
+            }
+            if (callDepth + 1 > maxCallDepth) {
+                addError("Stack overflow: maximum call depth " + to_string(maxCallDepth) +
+                         " exceeded at line " + to_string(instruction.line));
                 break;
             }
 
@@ -217,8 +265,11 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             if (paramCount == 0)
                 newBase = sp + 1;
 
-            if (!ensureIndex(newBase + 2 + paramCount))
+            if (newBase < 0 || newBase + 2 + paramCount >= (int)stack.size()) {
+                addError("Stack overflow: CAL frame header exceeds stack size at line " +
+                         to_string(instruction.line));
                 break;
+            }
             int staticLink = base(instruction.level);
             if (!errors.empty())
                 break;
@@ -232,14 +283,27 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             stack[newBase + 2] = StackValue::fromInt(pc);
             currentBase = newBase;
             sp = newBase + 2 + paramCount;
+            callDepth++;
             pc = target;
         }
         else if (instruction.op == "OPR") {
-            executeOperation(parseIntArgument(instruction), out);
+            executeOperation(parseIntArgument(instruction), out, instruction.line);
             if (!errors.empty())
                 break;
         }
         else if (instruction.op == "RET") {
+            auto frame = frames.find(currentBase);
+            if (frame == frames.end()) {
+                addError("Stack corruption: missing frame metadata at base " + to_string(currentBase));
+                break;
+            }
+            if (sp != frame->second.limit) {
+                addError("Stack corruption: unbalanced stack at RET line " + to_string(instruction.line) +
+                         " (sp=" + to_string(sp) + ", frame_limit=" +
+                         to_string(frame->second.limit) + ")");
+                break;
+            }
+
             if (currentBase == 0) {
                 sp = -1;
                 halted = true;
@@ -249,9 +313,19 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
                     break;
                 int returnPc = stack[currentBase + 2].asInt();
                 int dynamicLink = stack[currentBase + 1].asInt();
+                if (!validateJumpTarget(returnPc, (int)instructions.size(), "RET", instruction.line))
+                    break;
+                if (dynamicLink != 0 && frames.find(dynamicLink) == frames.end()) {
+                    addError("Stack corruption: invalid dynamic link " + to_string(dynamicLink) +
+                             " at line " + to_string(instruction.line));
+                    break;
+                }
+                frames.erase(currentBase);
                 sp = currentBase - 1;
                 pc = returnPc;
                 currentBase = dynamicLink;
+                if (callDepth > 0)
+                    callDepth--;
             }
         }
         else {
@@ -260,8 +334,13 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
         }
     }
 
-    if (!halted && errors.empty() && pc < 0) {
-        addError("Program counter moved before the first instruction");
+    if (!halted && errors.empty()) {
+        if (pc < 0) {
+            addError("Program counter moved before the first instruction");
+        }
+        else if (pc >= (int)instructions.size()) {
+            addError("Program counter moved past the last instruction without RET");
+        }
     }
 }
 
@@ -276,6 +355,102 @@ int StackMachineInterpreter::base(int level) {
     return result;
 }
 
+bool StackMachineInterpreter::validateProgram(const vector<Instruction> &instructions) {
+    for (size_t i = 0; i < instructions.size(); i++) {
+        const Instruction &instruction = instructions[i];
+        if (instruction.line != (int)i) {
+            addError("Invalid instruction numbering: line field " + to_string(instruction.line) +
+                     " appears at index " + to_string(i));
+            return false;
+        }
+
+        const string &op = instruction.op;
+        if (op == "JMP" || op == "JPC" || op == "CAL") {
+            int target = 0;
+            int paramCount = 0;
+            if (op == "CAL")
+                parseCallArgument(instruction, target, paramCount);
+            else
+                target = parseIntArgument(instruction);
+            if (!errors.empty())
+                return false;
+            if (!validateJumpTarget(target, (int)instructions.size(), op, instruction.line))
+                return false;
+            if (op == "CAL" && paramCount < 0) {
+                addError("Invalid CAL parameter slot count " + to_string(paramCount) +
+                         " at line " + to_string(instruction.line));
+                return false;
+            }
+        }
+        else if (op != "INT" && op != "LIT" && op != "LOD" && op != "STO" &&
+                 op != "LDA" && op != "LDI" && op != "STI" && op != "CPY" &&
+                 op != "CHK" && op != "REA" && op != "OPR" && op != "RET") {
+            addError("Unknown opcode '" + op + "' at line " + to_string(instruction.line));
+            return false;
+        }
+    }
+    return true;
+}
+
+bool StackMachineInterpreter::validateJumpTarget(int target, int instructionCount, const string &op, int line) {
+    if (target < 0 || target >= instructionCount) {
+        addError("Invalid " + op + " target " + to_string(target) +
+                 " at line " + to_string(line));
+        return false;
+    }
+    return true;
+}
+
+bool StackMachineInterpreter::validateDataAddress(int index, const string &action, int line) {
+    if (!ensureIndex(index))
+        return false;
+
+    for (const auto &entry : frames) {
+        int frameBase = entry.second.base;
+        int frameLimit = entry.second.limit;
+        if (index >= frameBase && index <= frameLimit) {
+            if (index < frameBase + 3) {
+                addError("Stack smashing detected: attempted " + action +
+                         " of frame control slot " + to_string(index) +
+                         " at line " + to_string(line));
+                return false;
+            }
+            return true;
+        }
+    }
+
+    addError("Stack corruption detected: attempted " + action +
+             " of address " + to_string(index) +
+             " outside active frame data at line " + to_string(line));
+    return false;
+}
+
+bool StackMachineInterpreter::validateDataBlock(int start, int size, const string &action, int line) {
+    if (size <= 0) {
+        addError("Invalid block size " + to_string(size) + " for " + action +
+                 " at line " + to_string(line));
+        return false;
+    }
+
+    for (int i = 0; i < size; i++) {
+        if (!validateDataAddress(start + i, action, line))
+            return false;
+    }
+    return true;
+}
+
+bool StackMachineInterpreter::pushIntChecked(long long value, const string &context) {
+    if (value > numeric_limits<int>::max()) {
+        addError("OverflowError: integer overflow during " + context);
+        return false;
+    }
+    if (value < numeric_limits<int>::min()) {
+        addError("UnderflowError: integer underflow during " + context);
+        return false;
+    }
+    return push(StackValue::fromInt((int)value));
+}
+
 bool StackMachineInterpreter::ensureIndex(int index) {
     if (index < 0 || index >= (int)stack.size()) {
         addError("Stack access out of bounds at index " + to_string(index));
@@ -285,6 +460,10 @@ bool StackMachineInterpreter::ensureIndex(int index) {
 }
 
 bool StackMachineInterpreter::push(const StackValue &value) {
+    if (sp + 1 >= (int)stack.size()) {
+        addError("Stack overflow: push exceeds stack size");
+        return false;
+    }
     if (!ensureIndex(sp + 1))
         return false;
     sp++;
@@ -311,19 +490,39 @@ bool StackMachineInterpreter::popBinary(StackValue &left, StackValue &right) {
 }
 
 int StackMachineInterpreter::parseIntArgument(const Instruction &instruction) {
-    return atoi(instruction.argument.c_str());
+    char *end = nullptr;
+    errno = 0;
+    long value = strtol(instruction.argument.c_str(), &end, 10);
+    if (errno != 0 || !end || *end != '\0') {
+        addError("Invalid integer operand '" + instruction.argument +
+                 "' at line " + to_string(instruction.line));
+        return 0;
+    }
+    if (value > numeric_limits<int>::max()) {
+        addError("OverflowError: integer operand too large at line " + to_string(instruction.line));
+        return 0;
+    }
+    if (value < numeric_limits<int>::min()) {
+        addError("UnderflowError: integer operand too small at line " + to_string(instruction.line));
+        return 0;
+    }
+    return (int)value;
 }
 
 void StackMachineInterpreter::parseCallArgument(const Instruction &instruction, int &target, int &paramCount) {
     size_t separator = instruction.argument.find(':');
     if (separator == string::npos) {
-        target = atoi(instruction.argument.c_str());
+        target = parseIntArgument(instruction);
         paramCount = 0;
         return;
     }
 
-    target = atoi(instruction.argument.substr(0, separator).c_str());
-    paramCount = atoi(instruction.argument.substr(separator + 1).c_str());
+    Instruction targetInstruction(instruction.line, instruction.op, instruction.level,
+                                  instruction.argument.substr(0, separator));
+    Instruction paramInstruction(instruction.line, instruction.op, instruction.level,
+                                 instruction.argument.substr(separator + 1));
+    target = parseIntArgument(targetInstruction);
+    paramCount = parseIntArgument(paramInstruction);
 }
 
 StackMachineInterpreter::StackValue StackMachineInterpreter::parseLiteral(const string &argument) {
@@ -342,7 +541,22 @@ StackMachineInterpreter::StackValue StackMachineInterpreter::parseLiteral(const 
         return StackValue::fromReal(atof(argument.c_str()));
     }
 
-    return StackValue::fromInt(atoi(argument.c_str()));
+    char *end = nullptr;
+    errno = 0;
+    long value = strtol(argument.c_str(), &end, 10);
+    if (errno != 0 || !end || *end != '\0') {
+        addError("Invalid integer literal '" + argument + "'");
+        return StackValue::fromInt(0);
+    }
+    if (value > numeric_limits<int>::max()) {
+        addError("OverflowError: integer literal too large");
+        return StackValue::fromInt(0);
+    }
+    if (value < numeric_limits<int>::min()) {
+        addError("UnderflowError: integer literal too small");
+        return StackValue::fromInt(0);
+    }
+    return StackValue::fromInt((int)value);
 }
 
 StackMachineInterpreter::StackValue StackMachineInterpreter::parseInputValue(const string &token) {
@@ -352,8 +566,17 @@ StackMachineInterpreter::StackValue StackMachineInterpreter::parseInputValue(con
     char *end = nullptr;
     errno = 0;
     long intValue = strtol(token.c_str(), &end, 10);
-    if (errno == 0 && end && *end == '\0')
+    if (errno == 0 && end && *end == '\0') {
+        if (intValue > numeric_limits<int>::max()) {
+            addError("OverflowError: input integer too large");
+            return StackValue::fromInt(0);
+        }
+        if (intValue < numeric_limits<int>::min()) {
+            addError("UnderflowError: input integer too small");
+            return StackValue::fromInt(0);
+        }
         return StackValue::fromInt((int)intValue);
+    }
 
     errno = 0;
     end = nullptr;
@@ -364,16 +587,23 @@ StackMachineInterpreter::StackValue StackMachineInterpreter::parseInputValue(con
     return StackValue::fromString(token);
 }
 
-void StackMachineInterpreter::executeOperation(int operation, ostream &out) {
+void StackMachineInterpreter::executeOperation(int operation, ostream &out, int line) {
     if (operation == 1) {
         if (sp < 0) {
             addError("Stack underflow on NEG");
             return;
         }
-        if (stack[sp].type == StackValue::REAL)
+        if (stack[sp].type == StackValue::REAL) {
             stack[sp] = StackValue::fromReal(-stack[sp].realValue);
-        else
-            stack[sp] = StackValue::fromInt(-stack[sp].asInt());
+        }
+        else {
+            int value = stack[sp].asInt();
+            if (value == numeric_limits<int>::min()) {
+                addError("OverflowError: integer overflow during NEG at line " + to_string(line));
+                return;
+            }
+            stack[sp] = StackValue::fromInt(-value);
+        }
         return;
     }
 
@@ -398,25 +628,44 @@ void StackMachineInterpreter::executeOperation(int operation, ostream &out) {
                 push(StackValue::fromReal(ar + br));
             }
             else {
-                push(StackValue::fromInt(a + b));
+                pushIntChecked((long long)a + b, "ADD at line " + to_string(line));
             }
             break;
         case 3:
-            push(realResult ? StackValue::fromReal(ar - br) : StackValue::fromInt(a - b));
+            if (realResult)
+                push(StackValue::fromReal(ar - br));
+            else
+                pushIntChecked((long long)a - b, "SUB at line " + to_string(line));
             break;
         case 4:
-            push(realResult ? StackValue::fromReal(ar * br) : StackValue::fromInt(a * b));
+            if (realResult)
+                push(StackValue::fromReal(ar * br));
+            else
+                pushIntChecked((long long)a * b, "MUL at line " + to_string(line));
             break;
         case 5:
             if ((realResult && br == 0.0) || (!realResult && b == 0)) {
                 addError("Division by zero");
                 return;
             }
-            push(realResult ? StackValue::fromReal(ar / br) : StackValue::fromInt(a / b));
+            if (realResult) {
+                push(StackValue::fromReal(ar / br));
+            }
+            else {
+                if (a == numeric_limits<int>::min() && b == -1) {
+                    addError("OverflowError: integer overflow during DIV at line " + to_string(line));
+                    return;
+                }
+                push(StackValue::fromInt(a / b));
+            }
             break;
         case 6:
             if (b == 0) {
                 addError("Modulo by zero");
+                return;
+            }
+            if (a == numeric_limits<int>::min() && b == -1) {
+                addError("OverflowError: integer overflow during MOD at line " + to_string(line));
                 return;
             }
             push(StackValue::fromInt(a % b));

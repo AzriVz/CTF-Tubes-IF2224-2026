@@ -773,6 +773,7 @@ ASTNode *SemanticAnalyzer::visitTypeDeclaration(ParseNode *node)
             td->tabRef = idx;
             td->type = actualType;
             td->level = symTable.currentLevel();
+            td->storageSize = size;
             result->addDeclaration(td);
         }
     }
@@ -890,6 +891,7 @@ ASTNode *SemanticAnalyzer::visitArrayType(ParseNode *node, std::string &outTypeN
     arrType->elementSize = elementSize;
     arrType->totalSize = totalSize;
     arrType->elementTypeName = elemTypeName;
+    arrType->storageSize = totalSize;
     return arrType;
 }
 
@@ -939,6 +941,7 @@ ASTNode *SemanticAnalyzer::visitRecordType(ParseNode *node, std::string &outType
                     fd->typeNode = resolvedFieldType;
                     fd->offset = offset;
                     fd->size = fieldSize;
+                    fd->storageSize = fieldSize;
                     offset += fieldSize;
                     fields.push_back(fd);
                 }
@@ -950,6 +953,7 @@ ASTNode *SemanticAnalyzer::visitRecordType(ParseNode *node, std::string &outType
     RecordTypeNode *recType = new RecordTypeNode(fields);
     recType->type = outTypeName;
     recType->totalSize = std::max(1, offset);
+    recType->storageSize = recType->totalSize;
     return recType;
 }
 
@@ -1110,6 +1114,7 @@ ASTNode *SemanticAnalyzer::visitVarDeclaration(ParseNode *node)
                 vd->type = typeName;
                 vd->level = symTable.currentLevel();
                 vd->size = storageSize;
+                vd->storageSize = storageSize;
                 result->addDeclaration(vd);
             }
         }
@@ -1197,6 +1202,8 @@ ASTNode *SemanticAnalyzer::visitAssignmentStatement(ParseNode *node)
             target->tabRef = idx;
             target->type = typeCodeToString(symTable.getTabEntry(idx).type);
             target->level = symTable.getTabEntry(idx).lev;
+            auto sizeIt = sizeBySymbol.find(idx);
+            target->storageSize = sizeIt != sizeBySymbol.end() ? sizeIt->second : 1;
         }
     }
 
@@ -1778,6 +1785,8 @@ ASTNode *SemanticAnalyzer::visitFactor(ParseNode *node)
             v->tabRef = idx;
             v->type = typeCodeToString(entry.type);
             v->level = entry.lev;
+            auto sizeIt = sizeBySymbol.find(idx);
+            v->storageSize = sizeIt != sizeBySymbol.end() ? sizeIt->second : 1;
             return v;
         }
 
@@ -1821,6 +1830,8 @@ ASTNode *SemanticAnalyzer::visitVariable(ParseNode *node)
     result->tabRef = idx;
     result->type = typeCodeToString(currentType);
     result->level = entry.lev;
+    auto sizeIt = sizeBySymbol.find(idx);
+    result->storageSize = sizeIt != sizeBySymbol.end() ? sizeIt->second : 1;
 
     for (size_t i = 1; i < node->children.size(); i++)
     {
@@ -1846,7 +1857,7 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
     {
 
         ParseNode *indexList = findChild(node, "<index-list>");
-        ASTNode *index = nullptr;
+        std::vector<ASTNode *> indexes;
         if (indexList)
         {
 
@@ -1854,9 +1865,11 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
             {
                 if (child && (child->name == "intcon" || child->name == "ident" || child->name == "charcon"))
                 {
+                    ASTNode *index = nullptr;
                     if (child->name == "intcon")
                     {
                         index = new NumberNode(std::stoi(child->token));
+                        index->level = symTable.currentLevel();
                     }
                     else if (child->name == "ident")
                     {
@@ -1870,27 +1883,42 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
                         {
                             index->tabRef = idx;
                             index->type = typeCodeToString(symTable.getTabEntry(idx).type);
+                            index->level = symTable.getTabEntry(idx).lev;
+                            auto sizeIt = sizeBySymbol.find(idx);
+                            index->storageSize = sizeIt != sizeBySymbol.end() ? sizeIt->second : 1;
                         }
                     }
                     else if (child->name == "charcon")
                     {
                         index = new CharNode(child->token.empty() ? ' ' : child->token[0]);
+                        index->level = symTable.currentLevel();
                     }
-                    break;
+                    if (index)
+                        indexes.push_back(index);
                 }
             }
         }
 
-        ArrayAccessNode *arr = new ArrayAccessNode(base, index);
-        arr->level = symTable.currentLevel();
-        ArrayTypeNode *arrayType = arrayTypeFor(base);
-        if (!arrayType)
+        if (indexes.empty())
         {
-            addError("Indexed access used on non-array value");
-            arr->type = "unknown";
+            addError("Array access requires at least one index");
+            return base;
         }
-        else
+
+        ASTNode *result = base;
+        for (auto index : indexes)
         {
+            ArrayAccessNode *arr = new ArrayAccessNode(result, index);
+            arr->level = symTable.currentLevel();
+            ArrayTypeNode *arrayType = arrayTypeFor(result);
+            if (!arrayType)
+            {
+                addError("Indexed access used on non-array value");
+                arr->type = "unknown";
+                result = arr;
+                continue;
+            }
+
             arr->lowBound = arrayType->lowBound;
             arr->highBound = arrayType->highBound;
             arr->elementSize = arrayType->elementSize;
@@ -1898,9 +1926,11 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
             arr->elementTypeName = arrayType->elementTypeName;
             arr->elementTypeNode = resolveTypeNode(arrayType->elementTypeName, arrayType->elementType);
             arr->type = arrayType->elementTypeName;
-            arr->tabRef = base ? base->tabRef : 0;
+            arr->tabRef = result ? result->tabRef : 0;
+            arr->storageSize = std::max(1, arrayType->elementSize);
+            result = arr;
         }
-        return arr;
+        return result;
     }
 
     if (first->name == "period")
@@ -1930,6 +1960,7 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
                     rec->fieldTypeNode = resolveTypeNode(field->typeName, field->typeNode);
                     rec->type = field->typeName;
                     rec->tabRef = base ? base->tabRef : 0;
+                    rec->storageSize = std::max(1, field->size);
                     found = true;
                     break;
                 }
@@ -2004,6 +2035,7 @@ ASTNode *SemanticAnalyzer::visitProcedureDeclaration(ParseNode *node)
         param->level = symTable.currentLevel();
         param->typeNode = resolvedType;
         param->size = paramSize;
+        param->storageSize = paramSize;
         typeNodeBySymbol[idx] = resolvedType;
         sizeBySymbol[idx] = paramSize;
     }
@@ -2109,6 +2141,7 @@ ASTNode *SemanticAnalyzer::visitFunctionDeclaration(ParseNode *node)
         param->level = symTable.currentLevel();
         param->typeNode = resolvedType;
         param->size = paramSize;
+        param->storageSize = paramSize;
         typeNodeBySymbol[idx] = resolvedType;
         sizeBySymbol[idx] = paramSize;
     }
@@ -2183,6 +2216,7 @@ ASTNode *SemanticAnalyzer::visitParameterGroup(ParseNode *node, std::vector<VarD
         vd->type = typeName;
         vd->typeNode = resolveTypeNode(typeName, typeNode);
         vd->size = typeSize(typeName, typeNode);
+        vd->storageSize = vd->size;
         params.push_back(vd);
     }
 

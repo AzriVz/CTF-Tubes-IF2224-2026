@@ -2,7 +2,7 @@
 #include <algorithm>
 
 ASTNode::ASTNode()
-    : type(""), level(0), tabRef(0), line(0) {}
+    : type(""), level(0), tabRef(0), line(0), storageSize(1) {}
 
 ASTNode::~ASTNode() {
     for (auto child : children) {

@@ -16,6 +16,8 @@ const vector<Instruction> &CodeGenerator::generate(ASTNode *ast, const SymbolTab
     subprogramEntriesByName.clear();
     subprogramParamCounts.clear();
     subprogramParamCountsByName.clear();
+    subprogramParamSlots.clear();
+    subprogramParamSlotsByName.clear();
     currentFrameLevel = 0;
 
     generateNode(ast);
@@ -132,8 +134,20 @@ void CodeGenerator::generateAssignment(AssignNode *node) {
         return;
     }
 
-    generateExpression(node->value);
+    int targetSize = storageSize(node->target);
+    int valueSize = storageSize(node->value);
+    if (targetSize > 1 || valueSize > 1) {
+        if (targetSize != valueSize) {
+            addError("Structured assignment size mismatch: target has " + to_string(targetSize) +
+                     " slot(s), value has " + to_string(valueSize) + " slot(s)");
+            return;
+        }
 
+        copyStructuredValue(node->value, node->target, targetSize);
+        return;
+    }
+
+    generateExpression(node->value);
     storeTopToTarget(node->target);
 }
 
@@ -164,8 +178,7 @@ void CodeGenerator::generateProcedureCall(ProcCallNode *node) {
 
     if (procName == "readln") {
         for (auto arg : node->args) {
-            emit("REA", 0, 0);
-            storeTopToTarget(arg);
+            generateStoreInput(arg);
         }
         return;
     }
@@ -294,6 +307,12 @@ void CodeGenerator::generateSubprogramDeclaration(SubprogramDeclNode *node) {
     subprogramEntriesByName[lower(node->subName)] = entryLine;
     subprogramParamCounts[node->tabRef] = (int)node->params.size();
     subprogramParamCountsByName[lower(node->subName)] = (int)node->params.size();
+    int paramSlots = 0;
+    for (auto param : node->params) {
+        paramSlots += storageSize(param);
+    }
+    subprogramParamSlots[node->tabRef] = paramSlots;
+    subprogramParamSlotsByName[lower(node->subName)] = paramSlots;
 
     int previousFrameLevel = currentFrameLevel;
     currentFrameLevel = node->level + 1;
@@ -326,6 +345,11 @@ void CodeGenerator::generateExpression(ASTNode *node) {
         emit("LIT", 0, quoteLiteral(string(1, ch->value)));
     }
     else if (auto *var = dynamic_cast<VarNode *>(node)) {
+        if (isStructured(var)) {
+            addError("Structured variable '" + var->name + "' requires an address/copy context");
+            return;
+        }
+
         RuntimeLocation location = runtimeLocation(var);
         if (location.isValid()) {
             emit("LOD", location.levelDiff, location.address);
@@ -391,6 +415,11 @@ void CodeGenerator::generateExpression(ASTNode *node) {
     }
     else if (dynamic_cast<ArrayAccessNode *>(node) ||
              dynamic_cast<RecordAccessNode *>(node)) {
+        if (isStructured(node)) {
+            addError("Structured access '" + node->nodeName() + "' requires an address/copy context");
+            return;
+        }
+
         if (generateAddress(node)) {
             emit("LDI", 0, 0);
         }
@@ -504,6 +533,8 @@ bool CodeGenerator::generateAddress(ASTNode *node) {
             generateExpression(arrayAccess->index);
         }
 
+        emit("CHK", arrayAccess->lowBound, arrayAccess->highBound);
+
         if (arrayAccess->lowBound != 0) {
             emit("LIT", 0, arrayAccess->lowBound);
             emit("OPR", 0, 3);
@@ -552,6 +583,78 @@ bool CodeGenerator::storeTopToTarget(ASTNode *node) {
     return false;
 }
 
+bool CodeGenerator::copyStructuredValue(ASTNode *source, ASTNode *target, int size) {
+    if (size <= 0) {
+        addError("Invalid structured copy size " + to_string(size));
+        return false;
+    }
+
+    if (!generateAddress(source)) {
+        addError("Structured assignment source is not addressable");
+        return false;
+    }
+    if (!generateAddress(target)) {
+        addError("Structured assignment target is not addressable");
+        return false;
+    }
+
+    emit("CPY", 0, size);
+    return true;
+}
+
+bool CodeGenerator::generateLoadSlots(ASTNode *node, int size) {
+    if (size <= 0) {
+        addError("Invalid structured argument size " + to_string(size));
+        return false;
+    }
+
+    if (size == 1) {
+        generateExpression(node);
+        return true;
+    }
+
+    for (int offset = 0; offset < size; offset++) {
+        if (!generateAddress(node))
+            return false;
+        if (offset != 0) {
+            emit("LIT", 0, offset);
+            emit("OPR", 0, 2);
+        }
+        emit("LDI", 0, 0);
+    }
+    return true;
+}
+
+bool CodeGenerator::generateStoreInput(ASTNode *node) {
+    int size = storageSize(node);
+    if (size <= 1) {
+        emit("REA", 0, 0);
+        return storeTopToTarget(node);
+    }
+
+    for (int offset = 0; offset < size; offset++) {
+        emit("REA", 0, 0);
+        if (!generateAddress(node))
+            return false;
+        if (offset != 0) {
+            emit("LIT", 0, offset);
+            emit("OPR", 0, 2);
+        }
+        emit("STI", 0, 0);
+    }
+    return true;
+}
+
+bool CodeGenerator::isStructured(const ASTNode *node) const {
+    return storageSize(node) > 1;
+}
+
+int CodeGenerator::storageSize(const ASTNode *node) const {
+    if (!node)
+        return 1;
+    return max(1, node->storageSize);
+}
+
 int CodeGenerator::operationForBinary(const string &op) const {
     if (op == "+")
         return 2;
@@ -592,8 +695,19 @@ void CodeGenerator::generateSubprogramCall(const string &name, int tabRef, const
         return;
     }
 
+    int actualParamSlots = 0;
     for (auto arg : args) {
-        generateExpression(arg);
+        int argSize = storageSize(arg);
+        if (!generateLoadSlots(arg, argSize))
+            return;
+        actualParamSlots += argSize;
+    }
+
+    int expectedSlots = expectedParamSlotCount(tabRef, name);
+    if (expectedSlots >= 0 && expectedSlots != actualParamSlots) {
+        addError("Call to '" + name + "' expects " + to_string(expectedSlots) +
+                 " argument slot(s), got " + to_string(actualParamSlots));
+        return;
     }
 
     int levelDiff = 0;
@@ -603,7 +717,7 @@ void CodeGenerator::generateSubprogramCall(const string &name, int tabRef, const
             levelDiff = 0;
     }
 
-    emit("CAL", levelDiff, formatCallArgument(entry, (int)args.size()));
+    emit("CAL", levelDiff, formatCallArgument(entry, actualParamSlots));
 
     if (leavesResult) {
         if (!symbolTable || tabRef <= 0 || tabRef >= symbolTable->getTabSize()) {
@@ -641,6 +755,18 @@ int CodeGenerator::expectedParamCount(int tabRef, const string &name) const {
 
     auto byName = subprogramParamCountsByName.find(lower(name));
     if (byName != subprogramParamCountsByName.end())
+        return byName->second;
+
+    return -1;
+}
+
+int CodeGenerator::expectedParamSlotCount(int tabRef, const string &name) const {
+    auto byRef = subprogramParamSlots.find(tabRef);
+    if (byRef != subprogramParamSlots.end())
+        return byRef->second;
+
+    auto byName = subprogramParamSlotsByName.find(lower(name));
+    if (byName != subprogramParamSlotsByName.end())
         return byName->second;
 
     return -1;
