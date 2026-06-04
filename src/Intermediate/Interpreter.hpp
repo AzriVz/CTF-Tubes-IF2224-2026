@@ -44,7 +44,9 @@ private:
     bool pop(StackValue &value);
     bool popBinary(StackValue &left, StackValue &right);
     int parseIntArgument(const Instruction &instruction);
+    void parseCallArgument(const Instruction &instruction, int &target, int &paramCount);
     StackValue parseLiteral(const std::string &argument);
+    StackValue parseInputValue(const std::string &token);
     void executeOperation(int operation, std::ostream &out);
     void addError(const std::string &message);
 

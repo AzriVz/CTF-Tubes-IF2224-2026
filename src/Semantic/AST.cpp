@@ -87,7 +87,7 @@ void DeclarationListNode::addDeclaration(ASTNode *decl) {
 }
 
 VarDeclNode::VarDeclNode(const std::string &name, const std::string &tname, ASTNode *tnode)
-    : varName(name), typeName(tname), typeNode(tnode) {}
+    : varName(name), typeName(tname), typeNode(tnode), offset(0), size(1) {}
 
 std::string VarDeclNode::label() const {
     return "VarDecl('" + varName + "')";
@@ -98,6 +98,10 @@ std::string VarDeclNode::annotation() const {
     std::ostringstream oss;
     oss << "  ->  tab_index:" << tabRef << ", type:" << (typeName.empty() ? type : typeName)
         << ", lev:" << level;
+    if (offset != 0)
+        oss << ", offset:" << offset;
+    if (size != 1)
+        oss << ", size:" << size;
     return oss.str();
 }
 
@@ -329,7 +333,8 @@ std::string VarNode::annotation() const {
 }
 
 ArrayAccessNode::ArrayAccessNode(ASTNode *arr, ASTNode *idx)
-    : array(arr), index(idx) {
+    : array(arr), index(idx), lowBound(0), highBound(0), elementSize(1),
+      totalSize(1), elementTypeName(""), elementTypeNode(nullptr) {
     if (arr)
         addChild(arr);
     if (idx)
@@ -343,11 +348,13 @@ std::string ArrayAccessNode::annotation() const {
         oss << ", lev:" << level;
     if (tabRef > 0)
         oss << ", tab_index:" << tabRef;
+    oss << ", low:" << lowBound << ", elem_size:" << elementSize;
     return oss.str();
 }
 
 RecordAccessNode::RecordAccessNode(ASTNode *rec, const std::string &fld)
-    : record(rec), field(fld) {
+    : record(rec), field(fld), fieldOffset(0), fieldSize(1),
+      fieldTypeName(""), fieldTypeNode(nullptr) {
     if (rec)
         addChild(rec);
 }
@@ -361,6 +368,9 @@ std::string RecordAccessNode::annotation() const {
     oss << "  ->  type:" << (type.empty() ? "?" : type);
     if (level > 0)
         oss << ", lev:" << level;
+    oss << ", field_offset:" << fieldOffset;
+    if (fieldSize != 1)
+        oss << ", size:" << fieldSize;
     return oss.str();
 }
 
@@ -492,7 +502,8 @@ std::string SubprogramDeclNode::annotation() const {
 }
 
 ArrayTypeNode::ArrayTypeNode(ASTNode *idxType, ASTNode *elemType)
-    : indexType(idxType), elementType(elemType) {
+    : indexType(idxType), elementType(elemType), lowBound(0), highBound(0),
+      elementSize(1), totalSize(1), elementTypeName("") {
     if (idxType)
         addChild(idxType);
     if (elemType)
@@ -504,11 +515,13 @@ std::string ArrayTypeNode::annotation() const {
     oss << "  ->  type:array";
     if (tabRef > 0)
         oss << ", atab_index:" << tabRef;
+    oss << ", bounds:" << lowBound << ".." << highBound
+        << ", elem_size:" << elementSize << ", size:" << totalSize;
     return oss.str();
 }
 
 RecordTypeNode::RecordTypeNode(const std::vector<VarDeclNode *> &flds)
-    : fields(flds) {
+    : fields(flds), totalSize(0) {
     for (auto f : fields) {
         if (f)
             addChild(f);
@@ -520,10 +533,12 @@ std::string RecordTypeNode::annotation() const {
     oss << "  ->  type:record";
     if (tabRef > 0)
         oss << ", btab_index:" << tabRef;
+    oss << ", size:" << totalSize;
     return oss.str();
 }
 
-RangeNode::RangeNode(ASTNode *l, ASTNode *h) : low(l), high(h) {
+RangeNode::RangeNode(ASTNode *l, ASTNode *h)
+    : low(l), high(h), lowValue(0), highValue(0), hasBounds(false) {
     if (l)
         addChild(l);
     if (h)
@@ -533,6 +548,8 @@ RangeNode::RangeNode(ASTNode *l, ASTNode *h) : low(l), high(h) {
 std::string RangeNode::annotation() const {
     std::ostringstream oss;
     oss << "  ->  type:subrange" << (type.empty() ? "" : "(" + type + ")");
+    if (hasBounds)
+        oss << ", bounds:" << lowValue << ".." << highValue;
     return oss.str();
 }
 

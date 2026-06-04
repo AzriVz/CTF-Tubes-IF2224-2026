@@ -102,6 +102,116 @@ std::string SemanticAnalyzer::typeCodeToString(int typeCode) const
     return "unknown";
 }
 
+ASTNode *SemanticAnalyzer::resolveTypeNode(const std::string &typeName, ASTNode *typeNode) const
+{
+    if (auto *varType = dynamic_cast<VarNode *>(typeNode))
+    {
+        auto named = namedTypeNodes.find(lowerString(varType->name));
+        if (named != namedTypeNodes.end())
+            return named->second;
+    }
+
+    auto named = namedTypeNodes.find(lowerString(typeName));
+    if (named != namedTypeNodes.end())
+        return named->second;
+
+    return typeNode;
+}
+
+int SemanticAnalyzer::typeSize(const std::string &typeName, ASTNode *typeNode) const
+{
+    ASTNode *resolved = resolveTypeNode(typeName, typeNode);
+    if (auto *arrayType = dynamic_cast<ArrayTypeNode *>(resolved))
+        return std::max(1, arrayType->totalSize);
+    if (auto *recordType = dynamic_cast<RecordTypeNode *>(resolved))
+        return std::max(1, recordType->totalSize);
+
+    if (auto *varType = dynamic_cast<VarNode *>(typeNode))
+    {
+        auto named = namedTypeSizes.find(lowerString(varType->name));
+        if (named != namedTypeSizes.end())
+            return std::max(1, named->second);
+    }
+
+    auto named = namedTypeSizes.find(lowerString(typeName));
+    if (named != namedTypeSizes.end())
+        return std::max(1, named->second);
+
+    return 1;
+}
+
+int SemanticAnalyzer::typeRef(ASTNode *typeNode) const
+{
+    ASTNode *resolved = resolveTypeNode("", typeNode);
+    if (auto *arrayType = dynamic_cast<ArrayTypeNode *>(resolved))
+        return arrayType->tabRef;
+    return 0;
+}
+
+int SemanticAnalyzer::ordinalValue(ASTNode *node, bool &ok) const
+{
+    ok = true;
+    if (auto *number = dynamic_cast<NumberNode *>(node))
+        return number->value;
+    if (auto *ch = dynamic_cast<CharNode *>(node))
+        return (int)ch->value;
+    if (auto *boolean = dynamic_cast<BooleanNode *>(node))
+        return boolean->value ? 1 : 0;
+
+    ok = false;
+    return 0;
+}
+
+ArrayTypeNode *SemanticAnalyzer::arrayTypeFor(ASTNode *node) const
+{
+    if (!node)
+        return nullptr;
+
+    if (auto *var = dynamic_cast<VarNode *>(node))
+    {
+        auto found = typeNodeBySymbol.find(var->tabRef);
+        if (found != typeNodeBySymbol.end())
+            return dynamic_cast<ArrayTypeNode *>(resolveTypeNode(var->type, found->second));
+    }
+    else if (auto *arrayAccess = dynamic_cast<ArrayAccessNode *>(node))
+    {
+        return dynamic_cast<ArrayTypeNode *>(resolveTypeNode(arrayAccess->elementTypeName,
+                                                            arrayAccess->elementTypeNode));
+    }
+    else if (auto *recordAccess = dynamic_cast<RecordAccessNode *>(node))
+    {
+        return dynamic_cast<ArrayTypeNode *>(resolveTypeNode(recordAccess->fieldTypeName,
+                                                            recordAccess->fieldTypeNode));
+    }
+
+    return nullptr;
+}
+
+RecordTypeNode *SemanticAnalyzer::recordTypeFor(ASTNode *node) const
+{
+    if (!node)
+        return nullptr;
+
+    if (auto *var = dynamic_cast<VarNode *>(node))
+    {
+        auto found = typeNodeBySymbol.find(var->tabRef);
+        if (found != typeNodeBySymbol.end())
+            return dynamic_cast<RecordTypeNode *>(resolveTypeNode(var->type, found->second));
+    }
+    else if (auto *arrayAccess = dynamic_cast<ArrayAccessNode *>(node))
+    {
+        return dynamic_cast<RecordTypeNode *>(resolveTypeNode(arrayAccess->elementTypeName,
+                                                             arrayAccess->elementTypeNode));
+    }
+    else if (auto *recordAccess = dynamic_cast<RecordAccessNode *>(node))
+    {
+        return dynamic_cast<RecordTypeNode *>(resolveTypeNode(recordAccess->fieldTypeName,
+                                                             recordAccess->fieldTypeNode));
+    }
+
+    return nullptr;
+}
+
 bool SemanticAnalyzer::isNumeric(int typeCode) const
 {
     return typeCode == symTable.getTypeInteger() ||
@@ -352,6 +462,10 @@ ASTNode *SemanticAnalyzer::analyze(ParseNode *parseTree)
     symTable.init();
     errors.clear();
     warnings.clear();
+    namedTypeNodes.clear();
+    namedTypeSizes.clear();
+    typeNodeBySymbol.clear();
+    sizeBySymbol.clear();
 
     return visit(parseTree);
 }
@@ -646,8 +760,14 @@ ASTNode *SemanticAnalyzer::visitTypeDeclaration(ParseNode *node)
                 typeCode = symTable.getTabSize();
             }
 
-            int idx = symTable.insertTab(typeName, "type", typeCode, 0, 1,
+            ASTNode *resolvedType = resolveTypeNode(actualType, typeNode);
+            int size = typeSize(actualType, typeNode);
+            int idx = symTable.insertTab(typeName, "type", typeCode, typeRef(resolvedType), 1,
                                          symTable.currentLevel(), 0);
+            namedTypeNodes[lowerString(typeName)] = resolvedType;
+            namedTypeSizes[lowerString(typeName)] = size;
+            typeNodeBySymbol[idx] = resolvedType;
+            sizeBySymbol[idx] = size;
 
             TypeDeclNode *td = new TypeDeclNode(typeName, typeNode);
             td->tabRef = idx;
@@ -679,6 +799,12 @@ ASTNode *SemanticAnalyzer::visitType(ParseNode *node, std::string &outTypeName)
         {
             addError("Undeclared type '" + outTypeName + "'");
             outTypeName = "unknown";
+        }
+        else
+        {
+            int typeCode = symTable.getTypeCode(outTypeName);
+            if (typeCode > 0)
+                outTypeName = typeCodeToString(typeCode);
         }
         return new VarNode(outTypeName);
     }
@@ -739,10 +865,31 @@ ASTNode *SemanticAnalyzer::visitArrayType(ParseNode *node, std::string &outTypeN
         addError("Array index type cannot be Real");
     }
 
-    int atabIdx = symTable.insertAtab(idxTypeCode, elemTypeCode, 0, 0, 0, 1, 1);
+    int lowBound = 0;
+    int highBound = 0;
+    if (auto *range = dynamic_cast<RangeNode *>(indexTypeNode))
+    {
+        if (range->hasBounds)
+        {
+            lowBound = range->lowValue;
+            highBound = range->highValue;
+        }
+    }
+
+    int elementSize = typeSize(elemTypeName, elemTypeNode);
+    int elementCount = std::max(0, highBound - lowBound + 1);
+    int totalSize = std::max(1, elementCount * elementSize);
+    int atabIdx = symTable.insertAtab(idxTypeCode, elemTypeCode, typeRef(elemTypeNode),
+                                      lowBound, highBound, elementSize, totalSize);
 
     ArrayTypeNode *arrType = new ArrayTypeNode(indexTypeNode, elemTypeNode);
     arrType->tabRef = atabIdx;
+    arrType->type = outTypeName;
+    arrType->lowBound = lowBound;
+    arrType->highBound = highBound;
+    arrType->elementSize = elementSize;
+    arrType->totalSize = totalSize;
+    arrType->elementTypeName = elemTypeName;
     return arrType;
 }
 
@@ -750,6 +897,7 @@ ASTNode *SemanticAnalyzer::visitRecordType(ParseNode *node, std::string &outType
 {
     ParseNode *fieldList = findChild(node, "<field-list>");
     std::vector<VarDeclNode *> fields;
+    int offset = 0;
 
     if (fieldList)
     {
@@ -783,8 +931,15 @@ ASTNode *SemanticAnalyzer::visitRecordType(ParseNode *node, std::string &outType
 
                 for (const auto &fname : names)
                 {
+                    ASTNode *resolvedFieldType = resolveTypeNode(fieldTypeName, fieldTypeNode);
+                    int fieldSize = typeSize(fieldTypeName, fieldTypeNode);
                     VarDeclNode *fd = new VarDeclNode(fname, fieldTypeName, fieldTypeNode);
                     fd->level = symTable.currentLevel();
+                    fd->type = fieldTypeName;
+                    fd->typeNode = resolvedFieldType;
+                    fd->offset = offset;
+                    fd->size = fieldSize;
+                    offset += fieldSize;
                     fields.push_back(fd);
                 }
             }
@@ -793,6 +948,8 @@ ASTNode *SemanticAnalyzer::visitRecordType(ParseNode *node, std::string &outType
 
     outTypeName = "record";
     RecordTypeNode *recType = new RecordTypeNode(fields);
+    recType->type = outTypeName;
+    recType->totalSize = std::max(1, offset);
     return recType;
 }
 
@@ -843,6 +1000,11 @@ ASTNode *SemanticAnalyzer::visitRange(ParseNode *node, std::string &outTypeName)
 
     RangeNode *range = new RangeNode(lowNode, highNode);
     range->type = outTypeName;
+    bool lowOk = false;
+    bool highOk = false;
+    range->lowValue = ordinalValue(lowNode, lowOk);
+    range->highValue = ordinalValue(highNode, highOk);
+    range->hasBounds = lowOk && highOk;
     return range;
 }
 
@@ -922,6 +1084,10 @@ ASTNode *SemanticAnalyzer::visitVarDeclaration(ParseNode *node)
                 typeCode = 0;
             }
 
+            ASTNode *resolvedType = resolveTypeNode(typeName, typeNode);
+            int storageSize = typeSize(typeName, typeNode);
+            int ref = typeRef(resolvedType);
+
             for (const auto &varName : names)
             {
 
@@ -932,15 +1098,18 @@ ASTNode *SemanticAnalyzer::visitVarDeclaration(ParseNode *node)
                     continue;
                 }
 
-                int adr = symTable.getCurrentVarSize();
-                int idx = symTable.insertTab(varName, "variable", typeCode, 0, 1,
+                int adr = symTable.getCurrentParamSize() + symTable.getCurrentVarSize();
+                int idx = symTable.insertTab(varName, "variable", typeCode, ref, 1,
                                              symTable.currentLevel(), adr);
-                symTable.addVarSize(1);
+                symTable.addVarSize(storageSize);
+                typeNodeBySymbol[idx] = resolvedType;
+                sizeBySymbol[idx] = storageSize;
 
                 VarDeclNode *vd = new VarDeclNode(varName, typeName, typeNode);
                 vd->tabRef = idx;
                 vd->type = typeName;
                 vd->level = symTable.currentLevel();
+                vd->size = storageSize;
                 result->addDeclaration(vd);
             }
         }
@@ -1334,7 +1503,7 @@ ASTNode *SemanticAnalyzer::visitCaseBlock(ParseNode *node)
         {
             labels.push_back(visitConstant(child));
         }
-        else if (child->name == "<statement>" || child->name == "<compound-statement>")
+        else if (child->name != "comma" && child->name != "colon" && child->name != "semicolon")
         {
             stmt = visit(child);
         }
@@ -1714,8 +1883,23 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
 
         ArrayAccessNode *arr = new ArrayAccessNode(base, index);
         arr->level = symTable.currentLevel();
-
-        arr->type = base->type;
+        ArrayTypeNode *arrayType = arrayTypeFor(base);
+        if (!arrayType)
+        {
+            addError("Indexed access used on non-array value");
+            arr->type = "unknown";
+        }
+        else
+        {
+            arr->lowBound = arrayType->lowBound;
+            arr->highBound = arrayType->highBound;
+            arr->elementSize = arrayType->elementSize;
+            arr->totalSize = arrayType->totalSize;
+            arr->elementTypeName = arrayType->elementTypeName;
+            arr->elementTypeNode = resolveTypeNode(arrayType->elementTypeName, arrayType->elementType);
+            arr->type = arrayType->elementTypeName;
+            arr->tabRef = base ? base->tabRef : 0;
+        }
         return arr;
     }
 
@@ -1727,6 +1911,36 @@ ASTNode *SemanticAnalyzer::visitComponentVariable(ParseNode *node, ASTNode *base
                                     : "";
         RecordAccessNode *rec = new RecordAccessNode(base, fieldName);
         rec->level = symTable.currentLevel();
+        RecordTypeNode *recordType = recordTypeFor(base);
+        if (!recordType)
+        {
+            addError("Field access used on non-record value");
+            rec->type = "unknown";
+        }
+        else
+        {
+            bool found = false;
+            for (auto field : recordType->fields)
+            {
+                if (field && lowerString(field->varName) == lowerString(fieldName))
+                {
+                    rec->fieldOffset = field->offset;
+                    rec->fieldSize = field->size;
+                    rec->fieldTypeName = field->typeName;
+                    rec->fieldTypeNode = resolveTypeNode(field->typeName, field->typeNode);
+                    rec->type = field->typeName;
+                    rec->tabRef = base ? base->tabRef : 0;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                addError("Record has no field named '" + fieldName + "'");
+                rec->type = "unknown";
+            }
+        }
         return rec;
     }
 
@@ -1780,12 +1994,18 @@ ASTNode *SemanticAnalyzer::visitProcedureDeclaration(ParseNode *node)
         int typeCode = symTable.getTypeCode(param->typeName);
         if (typeCode < 0)
             typeCode = 0;
+        ASTNode *resolvedType = resolveTypeNode(param->typeName, param->typeNode);
+        int paramSize = typeSize(param->typeName, param->typeNode);
         int adr = symTable.getCurrentParamSize();
-        int idx = symTable.insertTab(param->varName, "parameter", typeCode, 0, param->level == 1 ? 1 : 0,
+        int idx = symTable.insertTab(param->varName, "parameter", typeCode, typeRef(resolvedType), param->level == 1 ? 1 : 0,
                                      symTable.currentLevel(), adr);
-        symTable.addParamSize(1);
+        symTable.addParamSize(paramSize);
         param->tabRef = idx;
         param->level = symTable.currentLevel();
+        param->typeNode = resolvedType;
+        param->size = paramSize;
+        typeNodeBySymbol[idx] = resolvedType;
+        sizeBySymbol[idx] = paramSize;
     }
 
     ParseNode *blockNode = findChild(node, "<block>");
@@ -1867,7 +2087,10 @@ ASTNode *SemanticAnalyzer::visitFunctionDeclaration(ParseNode *node)
         retTypeCode = 0;
     }
 
-    int funcIdx = symTable.insertTab(funcName, "function", retTypeCode, 0, 1, symTable.currentLevel(), 0);
+    int resultAdr = symTable.getCurrentParamSize() + symTable.getCurrentVarSize();
+    int funcIdx = symTable.insertTab(funcName, "function", retTypeCode, 0, 1,
+                                     symTable.currentLevel(), resultAdr);
+    symTable.addVarSize(1);
 
     symTable.pushScope();
 
@@ -1876,12 +2099,18 @@ ASTNode *SemanticAnalyzer::visitFunctionDeclaration(ParseNode *node)
         int typeCode = symTable.getTypeCode(param->typeName);
         if (typeCode < 0)
             typeCode = 0;
+        ASTNode *resolvedType = resolveTypeNode(param->typeName, param->typeNode);
+        int paramSize = typeSize(param->typeName, param->typeNode);
         int adr = symTable.getCurrentParamSize();
-        int idx = symTable.insertTab(param->varName, "parameter", typeCode, 0, 1,
+        int idx = symTable.insertTab(param->varName, "parameter", typeCode, typeRef(resolvedType), 1,
                                      symTable.currentLevel(), adr);
-        symTable.addParamSize(1);
+        symTable.addParamSize(paramSize);
         param->tabRef = idx;
         param->level = symTable.currentLevel();
+        param->typeNode = resolvedType;
+        param->size = paramSize;
+        typeNodeBySymbol[idx] = resolvedType;
+        sizeBySymbol[idx] = paramSize;
     }
 
     ParseNode *blockNode = findChild(node, "<block>");
@@ -1951,6 +2180,9 @@ ASTNode *SemanticAnalyzer::visitParameterGroup(ParseNode *node, std::vector<VarD
     for (const auto &name : names)
     {
         VarDeclNode *vd = new VarDeclNode(name, typeName, typeNode);
+        vd->type = typeName;
+        vd->typeNode = resolveTypeNode(typeName, typeNode);
+        vd->size = typeSize(typeName, typeNode);
         params.push_back(vd);
     }
 

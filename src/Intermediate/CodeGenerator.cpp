@@ -14,6 +14,8 @@ const vector<Instruction> &CodeGenerator::generate(ASTNode *ast, const SymbolTab
     errors.clear();
     subprogramEntries.clear();
     subprogramEntriesByName.clear();
+    subprogramParamCounts.clear();
+    subprogramParamCountsByName.clear();
     currentFrameLevel = 0;
 
     generateNode(ast);
@@ -95,6 +97,9 @@ void CodeGenerator::generateStatement(ASTNode *node) {
     else if (auto *forNode = dynamic_cast<ForNode *>(node)) {
         generateFor(forNode);
     }
+    else if (auto *caseNode = dynamic_cast<CaseNode *>(node)) {
+        generateCase(caseNode);
+    }
     else if (auto *subprogram = dynamic_cast<SubprogramDeclNode *>(node)) {
         generateSubprogramDeclaration(subprogram);
     }
@@ -129,13 +134,7 @@ void CodeGenerator::generateAssignment(AssignNode *node) {
 
     generateExpression(node->value);
 
-    RuntimeLocation location = runtimeLocation(node->target);
-    if (!location.isValid()) {
-        addError("Unsupported assignment target: " + node->target->nodeName());
-        return;
-    }
-
-    emit("STO", location.levelDiff, location.address);
+    storeTopToTarget(node->target);
 }
 
 void CodeGenerator::generateProcedureCall(ProcCallNode *node) {
@@ -163,25 +162,15 @@ void CodeGenerator::generateProcedureCall(ProcCallNode *node) {
         return;
     }
 
-    if (!node->args.empty()) {
-        addError("Procedure call '" + node->procName + "' uses parameters, which are not supported by this PL/0 stack frame convention yet");
+    if (procName == "readln") {
+        for (auto arg : node->args) {
+            emit("REA", 0, 0);
+            storeTopToTarget(arg);
+        }
         return;
     }
 
-    int entry = subprogramEntry(node);
-    if (entry < 0) {
-        addError("Procedure call '" + node->procName + "' has no generated entry point");
-        return;
-    }
-
-    int levelDiff = 0;
-    if (symbolTable && node->tabRef > 0 && node->tabRef < symbolTable->getTabSize()) {
-        levelDiff = currentFrameLevel - symbolTable->getTabEntry(node->tabRef).lev;
-        if (levelDiff < 0)
-            levelDiff = 0;
-    }
-
-    emit("CAL", levelDiff, entry);
+    generateSubprogramCall(node->procName, node->tabRef, node->args, false);
 }
 
 void CodeGenerator::generateIf(IfNode *node) {
@@ -261,14 +250,41 @@ void CodeGenerator::generateFor(ForNode *node) {
     patchArgument(jpcLine, currentLine());
 }
 
-void CodeGenerator::generateSubprogramDeclaration(SubprogramDeclNode *node) {
-    if (!node->body) {
-        addError("Subprogram '" + node->subName + "' has no body");
+void CodeGenerator::generateCase(CaseNode *node) {
+    if (!node->selector) {
+        addError("Invalid case node");
         return;
     }
 
-    if (!node->params.empty()) {
-        addError("Subprogram '" + node->subName + "' has parameters, which are not supported by this PL/0 call convention yet");
+    vector<int> endJumps;
+
+    for (auto branch : node->branches) {
+        if (!branch)
+            continue;
+
+        for (auto label : branch->labels) {
+            if (!label)
+                continue;
+
+            generateExpression(node->selector);
+            generateExpression(label);
+            emit("OPR", 0, 7);
+            int nextLabel = emit("JPC", 0, 0);
+
+            generateStatement(branch->statement);
+            endJumps.push_back(emit("JMP", 0, 0));
+            patchArgument(nextLabel, currentLine());
+        }
+    }
+
+    for (int jumpLine : endJumps) {
+        patchArgument(jumpLine, currentLine());
+    }
+}
+
+void CodeGenerator::generateSubprogramDeclaration(SubprogramDeclNode *node) {
+    if (!node->body) {
+        addError("Subprogram '" + node->subName + "' has no body");
         return;
     }
 
@@ -276,6 +292,8 @@ void CodeGenerator::generateSubprogramDeclaration(SubprogramDeclNode *node) {
     int entryLine = currentLine();
     subprogramEntries[node->tabRef] = entryLine;
     subprogramEntriesByName[lower(node->subName)] = entryLine;
+    subprogramParamCounts[node->tabRef] = (int)node->params.size();
+    subprogramParamCountsByName[lower(node->subName)] = (int)node->params.size();
 
     int previousFrameLevel = currentFrameLevel;
     currentFrameLevel = node->level + 1;
@@ -369,13 +387,13 @@ void CodeGenerator::generateExpression(ASTNode *node) {
         }
     }
     else if (auto *call = dynamic_cast<FuncCallNode *>(node)) {
-        addError("Function call '" + call->funcName + "' is not supported by this PL/0 call convention yet");
+        generateSubprogramCall(call->funcName, call->tabRef, call->args, true);
     }
-    else if (dynamic_cast<ArrayAccessNode *>(node)) {
-        addError("Array access is not supported by the intermediate generator yet");
-    }
-    else if (dynamic_cast<RecordAccessNode *>(node)) {
-        addError("Record access is not supported by the intermediate generator yet");
+    else if (dynamic_cast<ArrayAccessNode *>(node) ||
+             dynamic_cast<RecordAccessNode *>(node)) {
+        if (generateAddress(node)) {
+            emit("LDI", 0, 0);
+        }
     }
     else {
         addError("Unsupported expression node: " + node->nodeName());
@@ -419,7 +437,7 @@ CodeGenerator::RuntimeLocation CodeGenerator::runtimeLocation(const ASTNode *nod
         return RuntimeLocation();
 
     const TabEntry &entry = symbolTable->getTabEntry(idx);
-    if (entry.obj != "variable" && entry.obj != "parameter")
+    if (entry.obj != "variable" && entry.obj != "parameter" && entry.obj != "function")
         return RuntimeLocation();
 
     int levelDiff = currentFrameLevel - entry.lev;
@@ -453,6 +471,87 @@ CodeGenerator::RuntimeLocation CodeGenerator::runtimeLocationByName(const string
     return RuntimeLocation(currentFrameLevel - entry.lev, 3 + entry.adr);
 }
 
+bool CodeGenerator::generateAddress(ASTNode *node) {
+    if (!node) {
+        addError("Cannot generate address for null node");
+        return false;
+    }
+
+    if (auto *var = dynamic_cast<VarNode *>(node)) {
+        RuntimeLocation location = runtimeLocation(var);
+        if (!location.isValid()) {
+            addError("Cannot take address of variable '" + var->name + "'");
+            return false;
+        }
+
+        emit("LDA", location.levelDiff, location.address);
+        return true;
+    }
+
+    if (auto *arrayAccess = dynamic_cast<ArrayAccessNode *>(node)) {
+        if (!arrayAccess->index) {
+            addError("Array access has no index expression");
+            return false;
+        }
+
+        if (!generateAddress(arrayAccess->array))
+            return false;
+
+        if (auto *charIndex = dynamic_cast<CharNode *>(arrayAccess->index)) {
+            emit("LIT", 0, (int)charIndex->value);
+        }
+        else {
+            generateExpression(arrayAccess->index);
+        }
+
+        if (arrayAccess->lowBound != 0) {
+            emit("LIT", 0, arrayAccess->lowBound);
+            emit("OPR", 0, 3);
+        }
+
+        if (arrayAccess->elementSize != 1) {
+            emit("LIT", 0, arrayAccess->elementSize);
+            emit("OPR", 0, 4);
+        }
+
+        emit("OPR", 0, 2);
+        return true;
+    }
+
+    if (auto *recordAccess = dynamic_cast<RecordAccessNode *>(node)) {
+        if (!generateAddress(recordAccess->record))
+            return false;
+
+        if (recordAccess->fieldOffset != 0) {
+            emit("LIT", 0, recordAccess->fieldOffset);
+            emit("OPR", 0, 2);
+        }
+        return true;
+    }
+
+    addError("Unsupported address target: " + node->nodeName());
+    return false;
+}
+
+bool CodeGenerator::storeTopToTarget(ASTNode *node) {
+    RuntimeLocation location = runtimeLocation(node);
+    if (location.isValid()) {
+        emit("STO", location.levelDiff, location.address);
+        return true;
+    }
+
+    if (dynamic_cast<ArrayAccessNode *>(node) ||
+        dynamic_cast<RecordAccessNode *>(node)) {
+        if (!generateAddress(node))
+            return false;
+        emit("STI", 0, 0);
+        return true;
+    }
+
+    addError("Unsupported assignment target: " + (node ? node->nodeName() : string("<null>")));
+    return false;
+}
+
 int CodeGenerator::operationForBinary(const string &op) const {
     if (op == "+")
         return 2;
@@ -479,19 +578,78 @@ int CodeGenerator::operationForBinary(const string &op) const {
     return -1;
 }
 
-int CodeGenerator::subprogramEntry(const ProcCallNode *node) const {
-    if (!node)
-        return -1;
+void CodeGenerator::generateSubprogramCall(const string &name, int tabRef, const vector<ASTNode *> &args, bool leavesResult) {
+    int entry = subprogramEntry(tabRef, name);
+    if (entry < 0) {
+        addError((leavesResult ? "Function" : "Procedure") + string(" call '") + name + "' has no generated entry point");
+        return;
+    }
 
-    auto byRef = subprogramEntries.find(node->tabRef);
+    int expected = expectedParamCount(tabRef, name);
+    if (expected >= 0 && expected != (int)args.size()) {
+        addError("Call to '" + name + "' expects " + to_string(expected) +
+                 " argument(s), got " + to_string(args.size()));
+        return;
+    }
+
+    for (auto arg : args) {
+        generateExpression(arg);
+    }
+
+    int levelDiff = 0;
+    if (symbolTable && tabRef > 0 && tabRef < symbolTable->getTabSize()) {
+        levelDiff = currentFrameLevel - symbolTable->getTabEntry(tabRef).lev;
+        if (levelDiff < 0)
+            levelDiff = 0;
+    }
+
+    emit("CAL", levelDiff, formatCallArgument(entry, (int)args.size()));
+
+    if (leavesResult) {
+        if (!symbolTable || tabRef <= 0 || tabRef >= symbolTable->getTabSize()) {
+            addError("Cannot load result of function '" + name + "'");
+            return;
+        }
+
+        const TabEntry &entryInfo = symbolTable->getTabEntry(tabRef);
+        int resultLevelDiff = currentFrameLevel - entryInfo.lev;
+        if (resultLevelDiff < 0) {
+            addError("Invalid lexical level for function result '" + name + "'");
+            return;
+        }
+
+        emit("LOD", resultLevelDiff, 3 + entryInfo.adr);
+    }
+}
+
+int CodeGenerator::subprogramEntry(int tabRef, const string &name) const {
+    auto byRef = subprogramEntries.find(tabRef);
     if (byRef != subprogramEntries.end())
         return byRef->second;
 
-    auto byName = subprogramEntriesByName.find(lower(node->procName));
+    auto byName = subprogramEntriesByName.find(lower(name));
     if (byName != subprogramEntriesByName.end())
         return byName->second;
 
     return -1;
+}
+
+int CodeGenerator::expectedParamCount(int tabRef, const string &name) const {
+    auto byRef = subprogramParamCounts.find(tabRef);
+    if (byRef != subprogramParamCounts.end())
+        return byRef->second;
+
+    auto byName = subprogramParamCountsByName.find(lower(name));
+    if (byName != subprogramParamCountsByName.end())
+        return byName->second;
+
+    return -1;
+}
+
+string CodeGenerator::formatCallArgument(int entry, int paramCount) const {
+    if (paramCount <= 0)
+        return to_string(entry);
+    return to_string(entry) + ":" + to_string(paramCount);
 }
 
 string CodeGenerator::formatReal(double value) const {

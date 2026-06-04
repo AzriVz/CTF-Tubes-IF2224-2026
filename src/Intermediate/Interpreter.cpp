@@ -1,6 +1,8 @@
 #include "Interpreter.hpp"
+#include <cerrno>
 #include <cstdlib>
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 using namespace std;
@@ -34,16 +36,22 @@ StackMachineInterpreter::StackValue StackMachineInterpreter::StackValue::fromStr
 int StackMachineInterpreter::StackValue::asInt() const {
     if (type == REAL)
         return (int)realValue;
-    if (type == STRING)
+    if (type == STRING) {
+        if (stringValue.size() == 1)
+            return (unsigned char)stringValue[0];
         return stringValue.empty() ? 0 : 1;
+    }
     return intValue;
 }
 
 double StackMachineInterpreter::StackValue::asReal() const {
     if (type == REAL)
         return realValue;
-    if (type == STRING)
+    if (type == STRING) {
+        if (stringValue.size() == 1)
+            return (unsigned char)stringValue[0];
         return stringValue.empty() ? 0.0 : 1.0;
+    }
     return intValue;
 }
 
@@ -133,6 +141,44 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
                 break;
             stack[index] = value;
         }
+        else if (instruction.op == "LDA") {
+            int resolvedBase = base(instruction.level);
+            int address = parseIntArgument(instruction);
+            int index = resolvedBase + address;
+            if (!errors.empty() || !ensureIndex(index))
+                break;
+            if (!push(StackValue::fromInt(index)))
+                break;
+        }
+        else if (instruction.op == "LDI") {
+            StackValue address;
+            if (!pop(address))
+                break;
+            int index = address.asInt();
+            if (!ensureIndex(index))
+                break;
+            if (!push(stack[index]))
+                break;
+        }
+        else if (instruction.op == "STI") {
+            StackValue address;
+            StackValue value;
+            if (!pop(address) || !pop(value))
+                break;
+            int index = address.asInt();
+            if (!ensureIndex(index))
+                break;
+            stack[index] = value;
+        }
+        else if (instruction.op == "REA") {
+            string token;
+            if (!(cin >> token)) {
+                addError("Input expected for READLN at line " + to_string(instruction.line));
+                break;
+            }
+            if (!push(parseInputValue(token)))
+                break;
+        }
         else if (instruction.op == "JMP") {
             int target = parseIntArgument(instruction);
             if (target < 0 || target > (int)instructions.size()) {
@@ -155,20 +201,37 @@ void StackMachineInterpreter::execute(const vector<Instruction> &instructions, o
             }
         }
         else if (instruction.op == "CAL") {
-            int target = parseIntArgument(instruction);
+            int target = 0;
+            int paramCount = 0;
+            parseCallArgument(instruction, target, paramCount);
             if (target < 0 || target >= (int)instructions.size()) {
                 addError("Invalid CAL target " + to_string(target) + " at line " + to_string(instruction.line));
                 break;
             }
-            if (!ensureIndex(sp + 3))
+            if (paramCount < 0 || paramCount > sp + 1) {
+                addError("Invalid parameter count " + to_string(paramCount) + " at line " + to_string(instruction.line));
+                break;
+            }
+
+            int newBase = sp - paramCount + 1;
+            if (paramCount == 0)
+                newBase = sp + 1;
+
+            if (!ensureIndex(newBase + 2 + paramCount))
                 break;
             int staticLink = base(instruction.level);
             if (!errors.empty())
                 break;
-            stack[sp + 1] = StackValue::fromInt(staticLink);
-            stack[sp + 2] = StackValue::fromInt(currentBase);
-            stack[sp + 3] = StackValue::fromInt(pc);
-            currentBase = sp + 1;
+
+            for (int i = paramCount - 1; i >= 0; i--) {
+                stack[newBase + 3 + i] = stack[newBase + i];
+            }
+
+            stack[newBase] = StackValue::fromInt(staticLink);
+            stack[newBase + 1] = StackValue::fromInt(currentBase);
+            stack[newBase + 2] = StackValue::fromInt(pc);
+            currentBase = newBase;
+            sp = newBase + 2 + paramCount;
             pc = target;
         }
         else if (instruction.op == "OPR") {
@@ -251,6 +314,18 @@ int StackMachineInterpreter::parseIntArgument(const Instruction &instruction) {
     return atoi(instruction.argument.c_str());
 }
 
+void StackMachineInterpreter::parseCallArgument(const Instruction &instruction, int &target, int &paramCount) {
+    size_t separator = instruction.argument.find(':');
+    if (separator == string::npos) {
+        target = atoi(instruction.argument.c_str());
+        paramCount = 0;
+        return;
+    }
+
+    target = atoi(instruction.argument.substr(0, separator).c_str());
+    paramCount = atoi(instruction.argument.substr(separator + 1).c_str());
+}
+
 StackMachineInterpreter::StackValue StackMachineInterpreter::parseLiteral(const string &argument) {
     if (argument.size() >= 2 && argument[0] == '\'' && argument[argument.size() - 1] == '\'') {
         string result;
@@ -268,6 +343,25 @@ StackMachineInterpreter::StackValue StackMachineInterpreter::parseLiteral(const 
     }
 
     return StackValue::fromInt(atoi(argument.c_str()));
+}
+
+StackMachineInterpreter::StackValue StackMachineInterpreter::parseInputValue(const string &token) {
+    if (token.empty())
+        return StackValue::fromString("");
+
+    char *end = nullptr;
+    errno = 0;
+    long intValue = strtol(token.c_str(), &end, 10);
+    if (errno == 0 && end && *end == '\0')
+        return StackValue::fromInt((int)intValue);
+
+    errno = 0;
+    end = nullptr;
+    double realValue = strtod(token.c_str(), &end);
+    if (errno == 0 && end && *end == '\0')
+        return StackValue::fromReal(realValue);
+
+    return StackValue::fromString(token);
 }
 
 void StackMachineInterpreter::executeOperation(int operation, ostream &out) {

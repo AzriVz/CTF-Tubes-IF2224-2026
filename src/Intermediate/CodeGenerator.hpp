@@ -16,6 +16,8 @@ private:
     std::vector<std::string> errors;
     std::map<int, int> subprogramEntries;
     std::map<std::string, int> subprogramEntriesByName;
+    std::map<int, int> subprogramParamCounts;
+    std::map<std::string, int> subprogramParamCountsByName;
     int currentFrameLevel;
 
     struct RuntimeLocation {
@@ -43,6 +45,7 @@ private:
     void generateWhile(WhileNode *node);
     void generateRepeat(RepeatNode *node);
     void generateFor(ForNode *node);
+    void generateCase(CaseNode *node);
     void generateSubprogramDeclaration(SubprogramDeclNode *node);
 
     int currentLine() const;
@@ -50,8 +53,13 @@ private:
     int frameSizeForBlock(const ASTNode *node) const;
     RuntimeLocation runtimeLocation(const ASTNode *node) const;
     RuntimeLocation runtimeLocationByName(const std::string &name) const;
+    bool generateAddress(ASTNode *node);
+    bool storeTopToTarget(ASTNode *node);
     int operationForBinary(const std::string &op) const;
-    int subprogramEntry(const ProcCallNode *node) const;
+    void generateSubprogramCall(const std::string &name, int tabRef, const std::vector<ASTNode *> &args, bool leavesResult);
+    int subprogramEntry(int tabRef, const std::string &name) const;
+    int expectedParamCount(int tabRef, const std::string &name) const;
+    std::string formatCallArgument(int entry, int paramCount) const;
     std::string formatReal(double value) const;
     std::string quoteLiteral(const std::string &value) const;
     std::string lower(const std::string &value) const;

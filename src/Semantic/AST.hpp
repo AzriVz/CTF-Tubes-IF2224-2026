@@ -65,6 +65,8 @@ public:
     std::string varName;
     std::string typeName;
     ASTNode *typeNode;
+    int offset;
+    int size;
 
     VarDeclNode(const std::string &name, const std::string &tname, ASTNode *tnode = nullptr);
     std::string nodeName() const override { return "VarDecl"; }
@@ -225,6 +227,12 @@ class ArrayAccessNode : public ASTNode {
 public:
     ASTNode *array;
     ASTNode *index;
+    int lowBound;
+    int highBound;
+    int elementSize;
+    int totalSize;
+    std::string elementTypeName;
+    ASTNode *elementTypeNode;
 
     ArrayAccessNode(ASTNode *arr, ASTNode *idx);
     std::string nodeName() const override { return "ArrayAccess"; }
@@ -235,6 +243,10 @@ class RecordAccessNode : public ASTNode {
 public:
     ASTNode *record;
     std::string field;
+    int fieldOffset;
+    int fieldSize;
+    std::string fieldTypeName;
+    ASTNode *fieldTypeNode;
 
     RecordAccessNode(ASTNode *rec, const std::string &fld);
     std::string nodeName() const override { return "RecordAccess"; }
@@ -323,6 +335,11 @@ class ArrayTypeNode : public ASTNode {
 public:
     ASTNode *indexType;
     ASTNode *elementType;
+    int lowBound;
+    int highBound;
+    int elementSize;
+    int totalSize;
+    std::string elementTypeName;
 
     ArrayTypeNode(ASTNode *idxType, ASTNode *elemType);
     std::string nodeName() const override { return "ArrayType"; }
@@ -332,6 +349,7 @@ public:
 class RecordTypeNode : public ASTNode {
 public:
     std::vector<VarDeclNode *> fields;
+    int totalSize;
 
     RecordTypeNode(const std::vector<VarDeclNode *> &flds);
     std::string nodeName() const override { return "RecordType"; }
@@ -342,6 +360,9 @@ class RangeNode : public ASTNode {
 public:
     ASTNode *low;
     ASTNode *high;
+    int lowValue;
+    int highValue;
+    bool hasBounds;
 
     RangeNode(ASTNode *l, ASTNode *h);
     std::string nodeName() const override { return "Range"; }
