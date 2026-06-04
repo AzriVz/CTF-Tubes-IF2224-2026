@@ -1,6 +1,17 @@
 #include "SemanticAnalyzer.hpp"
 #include <sstream>
 #include <algorithm>
+#include <cctype>
+
+using namespace std;
+
+static string lowerString(const string &value)
+{
+    string result = value;
+    transform(result.begin(), result.end(), result.begin(),
+              [](unsigned char ch) { return (char)tolower(ch); });
+    return result;
+}
 
 SemanticAnalyzer::SemanticAnalyzer() : currentLine(0) {}
 
@@ -1053,12 +1064,16 @@ ASTNode *SemanticAnalyzer::visitProcedureCall(ParseNode *node)
 {
     ParseNode *nameNode = getChild(node, 0);
     std::string callName = nameNode ? nameNode->token : "";
+    std::string lowerCallName = lowerString(callName);
 
     int idx = symTable.lookup(callName);
     bool isFunction = false;
     if (idx < 0)
     {
-        addError("Undeclared identifier '" + callName + "'");
+        if (lowerCallName != "write")
+        {
+            addError("Undeclared identifier '" + callName + "'");
+        }
     }
     else
     {
@@ -1122,32 +1137,36 @@ ASTNode *SemanticAnalyzer::visitIfStatement(ParseNode *node)
     ASTNode *thenStmt = nullptr;
     ASTNode *elseStmt = nullptr;
     bool foundThen = false;
+    bool foundElse = false;
 
     for (auto child : node->children)
     {
         if (!child)
             continue;
+        if (child->name == "ifsy" || child->name == "<expression>")
+        {
+            continue;
+        }
         if (child->name == "thensy")
         {
             foundThen = true;
+            foundElse = false;
             continue;
         }
         if (child->name == "elsesy")
         {
             foundThen = false;
+            foundElse = true;
             continue;
         }
-        if (child->name == "<statement>" || child->name == "<compound-statement>")
+        if (foundThen && !thenStmt)
         {
-            if (foundThen)
-            {
-                thenStmt = visit(child);
-                foundThen = false;
-            }
-            else
-            {
-                elseStmt = visit(child);
-            }
+            thenStmt = visit(child);
+            foundThen = false;
+        }
+        else if (foundElse && !elseStmt)
+        {
+            elseStmt = visit(child);
         }
     }
 

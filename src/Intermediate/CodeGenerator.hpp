@@ -4,6 +4,7 @@
 #include "Instruction.hpp"
 #include "../Semantic/AST.hpp"
 #include "../Semantic/SymbolTable.hpp"
+#include <map>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -13,6 +14,17 @@ private:
     const SymbolTable *symbolTable;
     std::vector<Instruction> instructions;
     std::vector<std::string> errors;
+    std::map<int, int> subprogramEntries;
+    std::map<std::string, int> subprogramEntriesByName;
+    int currentFrameLevel;
+
+    struct RuntimeLocation {
+        int levelDiff;
+        int address;
+
+        RuntimeLocation(int l = -1, int a = -1) : levelDiff(l), address(a) {}
+        bool isValid() const { return levelDiff >= 0 && address >= 0; }
+    };
 
     int emit(const std::string &op, int level, const std::string &argument);
     int emit(const std::string &op, int level, int argument);
@@ -31,12 +43,15 @@ private:
     void generateWhile(WhileNode *node);
     void generateRepeat(RepeatNode *node);
     void generateFor(ForNode *node);
+    void generateSubprogramDeclaration(SubprogramDeclNode *node);
 
     int currentLine() const;
     int globalFrameSize() const;
-    int runtimeAddress(const ASTNode *node) const;
-    int runtimeAddressByName(const std::string &name) const;
+    int frameSizeForBlock(const ASTNode *node) const;
+    RuntimeLocation runtimeLocation(const ASTNode *node) const;
+    RuntimeLocation runtimeLocationByName(const std::string &name) const;
     int operationForBinary(const std::string &op) const;
+    int subprogramEntry(const ProcCallNode *node) const;
     std::string formatReal(double value) const;
     std::string quoteLiteral(const std::string &value) const;
     std::string lower(const std::string &value) const;

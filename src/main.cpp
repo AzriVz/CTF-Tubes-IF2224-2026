@@ -2,6 +2,7 @@
 #include "Parser/Parser.hpp"
 #include "Semantic/SemanticAnalyzer.hpp"
 #include "Intermediate/CodeGenerator.hpp"
+#include "Intermediate/Interpreter.hpp"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -126,6 +127,19 @@ int main(int argc, char *argv[]) {
             generator.generate(ast, analyzer.getSymbolTable());
 
             generator.print(cout);
+            bool hasRuntimeErrors = false;
+            if (!generator.hasErrors()) {
+                cout << endl << "=== Program Output ===" << endl;
+                StackMachineInterpreter interpreter;
+                interpreter.execute(generator.getInstructions(), cout);
+                if (interpreter.hasErrors()) {
+                    hasRuntimeErrors = true;
+                    cerr << "Runtime execution failed." << endl;
+                    for (const auto &err : interpreter.getErrors()) {
+                        cerr << err << endl;
+                    }
+                }
+            }
 
             string outfile = filename;
             size_t lastDot = outfile.rfind('.');
@@ -137,6 +151,17 @@ int main(int argc, char *argv[]) {
             }
             ofstream out(outfile);
             generator.print(out);
+            if (!generator.hasErrors()) {
+                out << endl << "=== Program Output ===" << endl;
+                StackMachineInterpreter fileInterpreter;
+                fileInterpreter.execute(generator.getInstructions(), out);
+                if (fileInterpreter.hasErrors()) {
+                    out << endl << "=== Runtime Errors ===" << endl;
+                    for (const auto &err : fileInterpreter.getErrors()) {
+                        out << err << endl;
+                    }
+                }
+            }
             out.close();
             cerr << "Intermediate code saved to: " << outfile << endl;
 
@@ -144,7 +169,7 @@ int main(int argc, char *argv[]) {
             delete ast;
             delete tree;
 
-            if (hasGenerationErrors) {
+            if (hasGenerationErrors || hasRuntimeErrors) {
                 return 1;
             }
         }
