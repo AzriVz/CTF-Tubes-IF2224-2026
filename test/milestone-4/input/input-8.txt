@@ -1,0 +1,13 @@
+program ICForLoop;
+var
+  i, total: integer;
+begin
+  total := 0;
+
+  for i := 1 to 4 do
+  begin
+    total := total + i;
+  end;
+
+  writeln(total);
+end.
