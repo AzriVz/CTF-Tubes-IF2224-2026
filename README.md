@@ -170,10 +170,10 @@ Program akan menampilkan token, parse tree, hasil analisis semantik, atau interm
         │   └── output
         │       └── *_parse.txt
         ├── milestone-3
-            ├── input
-            │   └── *.txt
-            └── output
-                └── output-*.txt
+        │   ├── input
+        │   │   └── *.txt
+        │   └── output
+        │       └── output-*.txt
         └── milestone-4
             ├── input
             │   └── input-*.txt
