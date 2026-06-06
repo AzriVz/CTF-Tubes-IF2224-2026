@@ -1,0 +1,14 @@
+program ICRepeatLoop;
+var
+  i, total: integer;
+begin
+  i := 0;
+  total := 0;
+
+  repeat
+    i := i + 1;
+    total := total + i;
+  until i >= 4;
+
+  writeln(total);
+end.

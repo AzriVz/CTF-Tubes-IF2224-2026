@@ -1,0 +1,14 @@
+=== Intermediate Code ===
+0 INT 0 4
+1 LIT 0 2147483647
+2 LIT 0 1
+3 OPR 0 2
+4 STO 0 3
+5 LOD 0 3
+6 OPR 0 14
+7 RET 0 0
+
+=== Program Output ===
+
+=== Runtime Errors ===
+Runtime error: OverflowError: integer overflow during ADD at line 3

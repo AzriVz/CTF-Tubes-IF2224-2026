@@ -4,6 +4,7 @@
 #include "../Parser/Parser.hpp"
 #include "AST.hpp"
 #include "SymbolTable.hpp"
+#include <map>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,10 @@ private:
     SymbolTable symTable;
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
+    std::map<std::string, ASTNode *> namedTypeNodes;
+    std::map<std::string, int> namedTypeSizes;
+    std::map<int, ASTNode *> typeNodeBySymbol;
+    std::map<int, int> sizeBySymbol;
 
     int currentLine;
 
@@ -44,6 +49,12 @@ private:
     int inferUnaryOpType(const std::string &op, int operandType, int line);
 
     std::string typeCodeToString(int typeCode) const;
+    ASTNode *resolveTypeNode(const std::string &typeName, ASTNode *typeNode) const;
+    int typeSize(const std::string &typeName, ASTNode *typeNode) const;
+    int typeRef(ASTNode *typeNode) const;
+    int ordinalValue(ASTNode *node, bool &ok) const;
+    ArrayTypeNode *arrayTypeFor(ASTNode *node) const;
+    RecordTypeNode *recordTypeFor(ASTNode *node) const;
 
     ASTNode *visit(ParseNode *node);
 

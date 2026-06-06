@@ -1,0 +1,9 @@
+program BonusArrayBounds;
+var
+  arr: array[1..3] of integer;
+  idx: integer;
+begin
+  idx := 4;
+  arr[idx] := 99;
+  writeln(arr[1]);
+end.

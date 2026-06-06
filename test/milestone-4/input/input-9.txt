@@ -1,0 +1,16 @@
+program ICRecord;
+type
+  Point == record
+    x: integer;
+    y: integer
+  end;
+
+var
+  p: Point;
+  sum: integer;
+begin
+  p.x := 7;
+  p.y := 8;
+  sum := p.x + p.y;
+  writeln(sum);
+end.

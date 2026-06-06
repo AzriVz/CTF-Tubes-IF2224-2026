@@ -1,0 +1,17 @@
+program ICArray;
+var
+  scores: array[1..3] of integer;
+  i, total: integer;
+begin
+  i := 1;
+  total := 0;
+
+  while i <= 3 do
+  begin
+    scores[i] := i * 10;
+    total := total + scores[i];
+    i := i + 1;
+  end;
+
+  writeln(total);
+end.

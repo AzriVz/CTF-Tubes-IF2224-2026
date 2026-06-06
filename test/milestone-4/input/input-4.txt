@@ -1,0 +1,17 @@
+program ICProcedureScope;
+var
+  globalValue: integer;
+
+procedure AddTen;
+var
+  localValue: integer;
+begin
+  localValue := 10;
+  globalValue := globalValue + localValue;
+end;
+
+begin
+  globalValue := 1;
+  AddTen();
+  writeln(globalValue);
+end.

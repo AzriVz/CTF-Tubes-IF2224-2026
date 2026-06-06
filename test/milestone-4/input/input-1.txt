@@ -1,0 +1,9 @@
+program ICArithmetic;
+var
+  a, b, result: integer;
+begin
+  a := 5;
+  b := 10;
+  result := a + b * 2;
+  writeln(result);
+end.
