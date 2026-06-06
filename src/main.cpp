@@ -12,8 +12,9 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        cerr << "Usage: ./bin/arion-compiler [--parse|--semantic|--ic] <input-file.txt>" << endl;
-        cerr << "  Default: lexer only" << endl;
+        cerr << "Usage: ./bin/arion-compiler [--lexer|--parse|--semantic|--ic] <input-file.txt>" << endl;
+        cerr << "  Default: run parser + semantic analysis + intermediate code generation + interpreter" << endl;
+        cerr << "  --lexer: run lexer only" << endl;
         cerr << "  --parse: run lexer + parser and output parse tree" << endl;
         cerr << "  --semantic: run parser + semantic analysis and output decorated AST + symbol tables" << endl;
         cerr << "  --ic: run parser + semantic analysis + intermediate code generation" << endl;
@@ -30,7 +31,10 @@ int main(int argc, char *argv[]) {
     string filename;
 
     if (argc >= 3) {
-        if (string(argv[1]) == "--parse") {
+        if (string(argv[1]) == "--lexer") {
+            filename = argv[2];
+        }
+        else if (string(argv[1]) == "--parse") {
             parseMode = true;
             filename = argv[2];
         }
@@ -44,10 +48,12 @@ int main(int argc, char *argv[]) {
         }
         else {
             filename = argv[1];
+            intermediateMode = true;
         }
     }
     else {
         filename = argv[1];
+        intermediateMode = true;
     }
 
     try {
